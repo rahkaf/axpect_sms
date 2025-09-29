@@ -1,0 +1,186 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+.form-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #007bff;
+}
+.form-section h5 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+.required-field::after {
+    content: " *";
+    color: #dc3545;
+}
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">{{page_title}}</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="{% url 'admin_home' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'customers_manage' %}">Customer Management</a></li>
+                        <li class="breadcrumb-item active">{{page_title}}</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-plus"></i> {{page_title}}
+                    </h3>
+                </div>
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="card-body">
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                <h5><i class="icon fas fa-ban"></i> Please correct the following errors:</h5>
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <p>{{ field|capfirst }}: {{ error }}</p>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-info-circle"></i> Basic Information</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.name.id_for_label }}" class="required-field">Customer Name</label>
+                                        {{ form.name }}
+                                        {% if form.name.help_text %}
+                                            <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.code.id_for_label }}" class="required-field">Customer Code</label>
+                                        {{ form.code }}
+                                        {% if form.code.help_text %}
+                                            <small class="form-text text-muted">{{ form.code.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-address-book"></i> Contact Information</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.phone_primary.id_for_label }}">Phone Number</label>
+                                        {{ form.phone_primary }}
+                                        {% if form.phone_primary.help_text %}
+                                            <small class="form-text text-muted">{{ form.phone_primary.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.email.id_for_label }}">Email Address</label>
+                                        {{ form.email }}
+                                        {% if form.email.help_text %}
+                                            <small class="form-text text-muted">{{ form.email.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Information -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-map-marker-alt"></i> Location Information</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.city.id_for_label }}">City</label>
+                                        {{ form.city }}
+                                        {% if form.city.help_text %}
+                                            <small class="form-text text-muted">{{ form.city.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.address.id_for_label }}">Address</label>
+                                        {{ form.address }}
+                                        {% if form.address.help_text %}
+                                            <small class="form-text text-muted">{{ form.address.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Management Information -->
+                        <div class="form-section">
+                            <h5><i class="fas fa-cog"></i> Management Information</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="{{ form.owner_staff.id_for_label }}">Assigned Owner</label>
+                                        {{ form.owner_staff }}
+                                        {% if form.owner_staff.help_text %}
+                                            <small class="form-text text-muted">{{ form.owner_staff.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <div class="form-check">
+                                            {{ form.active }}
+                                            <label class="form-check-label" for="{{ form.active.id_for_label }}">
+                                                Active Customer
+                                            </label>
+                                        </div>
+                                        {% if form.active.help_text %}
+                                            <small class="form-text text-muted">{{ form.active.help_text }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Save Customer
+                        </button>
+                        <a href="{% url 'customers_manage' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock content %}
+

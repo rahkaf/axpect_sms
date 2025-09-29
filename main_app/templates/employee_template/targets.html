@@ -1,0 +1,36 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">{{page_title}} ({{period}})</h3></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Goals</h5>
+                        <ul>
+                            <li>Calls: {{tgt.goal_calls|default:0}}</li>
+                            <li>Visits: {{tgt.goal_visits|default:0}}</li>
+                            <li>Bales: {{tgt.goal_bales|default:0}}</li>
+                            <li>Collections: {{tgt.goal_collections|default:0}}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Progress</h5>
+                        <ul>
+                            <li>Jobs Completed: {{progress.jobs_completed}}</li>
+                            <li>Orders: {{progress.orders_count}}</li>
+                            <li>Bales: {{progress.bales_total}}</li>
+                            <li>Payments: {{progress.payments_count}}</li>
+                            <li>Points: {{progress.points}}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+ </section>
+{% endblock content %}
+
+

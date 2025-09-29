@@ -1,0 +1,23 @@
+DJANGO
+djangorestframework
+django-cors-headers
+python-dotenv
+Pillow
+dj-database-url
+whitenoise
+
+# Optional/advanced dependencies (enable later as needed)
+# openai==0.28.0
+celery
+django-celery-beat
+redis
+twilio
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+pandas
+numpy
+scikit-learn
+nltk
+spacy
+channels-redis

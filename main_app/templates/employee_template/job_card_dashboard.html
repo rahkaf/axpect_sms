@@ -1,0 +1,434 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+.job-card-item {
+    transition: transform 0.2s;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.job-card-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.priority-badge {
+    font-size: 0.75em;
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+.status-badge {
+    font-size: 0.8em;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-weight: 600;
+}
+.overdue {
+    border-left: 4px solid #dc3545;
+}
+.due-soon {
+    border-left: 4px solid #ffc107;
+}
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px;
+}
+.job-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* Responsive grid adjustments */
+@media (min-width: 576px) {
+    .job-card-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+}
+
+@media (min-width: 992px) {
+    .job-card-grid {
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    }
+}
+.job-card {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 20px;
+    background: white;
+    transition: all 0.3s ease;
+}
+.job-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+/* Filter section responsive */
+.filter-form .row > div {
+    margin-bottom: 15px;
+}
+
+@media (min-width: 768px) {
+    .filter-form .row > div {
+        margin-bottom: 0;
+    }
+}
+
+/* Stats cards responsive */
+.stats-row .col-lg-3 {
+    margin-bottom: 15px;
+}
+
+@media (min-width: 992px) {
+    .stats-row .col-lg-3 {
+        margin-bottom: 0;
+    }
+}
+
+/* Job card content responsive */
+@media (max-width: 576px) {
+    .job-card {
+        padding: 15px;
+    }
+    
+    .job-card .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    .job-card .row > div {
+        padding-left: 0;
+        padding-right: 0;
+        margin-bottom: 10px;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 5px;
+        border-radius: 0.25rem !important;
+    }
+}
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+            <!-- Statistics Cards -->
+            <div class="row stats-row">
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-info">
+                        <div class="inner">
+                            <h3>{{ total_job_cards }}</h3>
+                            <p>Total Assigned</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-warning">
+                        <div class="inner">
+                            <h3>{{ active_job_cards }}</h3>
+                            <p>Active Tasks</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-success">
+                        <div class="inner">
+                            <h3>{{ completed_job_cards }}</h3>
+                            <p>Completed</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-6">
+                    <div class="small-box bg-danger">
+                        <div class="inner">
+                            <h3>{{ overdue_job_cards }}</h3>
+                            <p>Overdue</p>
+                        </div>
+                        <div class="icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row align-items-end filter-form">
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-control">
+                                <option value="">All Status</option>
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Priority</label>
+                            <select name="priority" class="form-control">
+                                <option value="">All Priority</option>
+                                {% for value, label in priority_choices %}
+                                    <option value="{{ value }}" {% if current_filters.priority == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Search</label>
+                            <input type="text" name="search" class="form-control" placeholder="Search job cards..." value="{{ current_filters.search }}">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary mr-2">
+                                <i class="fas fa-search"></i> Filter
+                            </button>
+                            <a href="{% url 'employee_job_card_dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Job Cards Grid -->
+            <div class="job-card-grid">
+                {% for job_card in job_cards %}
+                <div class="job-card {% if job_card.is_overdue %}overdue-border{% elif job_card.days_until_due and job_card.days_until_due <= 2 %}due-soon-border{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="mb-1">{{ job_card.title }}</h5>
+                            <small class="text-muted">{{ job_card.job_card_number }}</small>
+                        </div>
+                        <div class="text-right">
+                            <span class="badge badge-{{ job_card.priority_color }} priority-badge">
+                                {{ job_card.get_priority_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted mb-3">{{ job_card.description|truncatechars:100 }}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Assigned by:</small>
+                            <div class="font-weight-bold">{{ job_card.assigned_by_name }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Due Date:</small>
+                            <div class="font-weight-bold">
+                                {% if job_card.due_date %}
+                                    {{ job_card.due_date|date:"M d, Y" }}
+                                    {% if job_card.days_until_due is not None %}
+                                        <br><small class="{% if job_card.days_until_due < 0 %}text-danger{% elif job_card.days_until_due <= 2 %}text-warning{% else %}text-muted{% endif %}">
+                                            {% if job_card.days_until_due < 0 %}
+                                                {{ job_card.days_until_due|floatformat:0|slice:"1:" }} days overdue
+                                            {% elif job_card.days_until_due == 0 %}
+                                                Due today
+                                            {% else %}
+                                                {{ job_card.days_until_due }} days left
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">No due date</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if job_card.customer %}
+                    <div class="mb-3">
+                        <small class="text-muted">Customer:</small>
+                        <div class="font-weight-bold">{{ job_card.customer.name }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if job_card.work_location %}
+                    <div class="mb-3">
+                        <small class="text-muted">Location:</small>
+                        <div class="font-weight-bold">{{ job_card.work_location }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted">Progress:</small>
+                            <small class="font-weight-bold">{{ job_card.progress_percentage }}%</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-{{ job_card.status_color }}" 
+                                 style="width: {{ job_card.progress_percentage }}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge badge-{{ job_card.status_color }} status-badge">
+                            {{ job_card.get_status_display }}
+                        </span>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'job_card_detail' job_card.id %}" class="btn btn-primary">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                            {% if job_card.status != 'completed' and job_card.status != 'cancelled' %}
+                            <button class="btn btn-success" onclick="quickStatusUpdate({{ job_card.id }}, '{{ job_card.status }}')">
+                                <i class="fas fa-edit"></i> Update
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-clipboard-list fa-5x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Job Cards Assigned</h4>
+                        <p class="text-muted">You don't have any job cards assigned to you yet.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if job_cards.has_other_pages %}
+            <div class="d-flex justify-content-center mt-4">
+                <nav aria-label="Job cards pagination">
+                    <ul class="pagination">
+                        {% if job_cards.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ job_cards.previous_page_number }}{% if current_filters.status %}&status={{ current_filters.status }}{% endif %}{% if current_filters.priority %}&priority={{ current_filters.priority }}{% endif %}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in job_cards.paginator.page_range %}
+                            {% if job_cards.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > job_cards.number|add:'-3' and num < job_cards.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if current_filters.status %}&status={{ current_filters.status }}{% endif %}{% if current_filters.priority %}&priority={{ current_filters.priority }}{% endif %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if job_cards.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ job_cards.next_page_number }}{% if current_filters.status %}&status={{ current_filters.status }}{% endif %}{% if current_filters.priority %}&priority={{ current_filters.priority }}{% endif %}">Next</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+    </div>
+</div>
+
+<!-- Quick Status Update Modal -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Update Job Status</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="statusUpdateForm">
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select class="form-control" id="newStatus">
+                            <option value="assigned">Assigned</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="on_hold">On Hold</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Progress (%):</label>
+                        <input type="number" class="form-control" id="progressPercentage" min="0" max="100" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Work Notes:</label>
+                        <textarea class="form-control" id="workNotes" rows="3" placeholder="Add any updates or notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmStatusUpdate">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+let currentJobCardId = null;
+
+function quickStatusUpdate(jobCardId, currentStatus) {
+    currentJobCardId = jobCardId;
+    $('#newStatus').val(currentStatus);
+    $('#statusUpdateModal').modal('show');
+}
+
+$('#confirmStatusUpdate').click(function() {
+    const newStatus = $('#newStatus').val();
+    
+    $.ajax({
+        url: '{% url "update_job_card_status" %}',
+        method: 'POST',
+        data: JSON.stringify({
+            job_card_id: currentJobCardId,
+            status: newStatus
+        }),
+        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': $('[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(response) {
+            $('#statusUpdateModal').modal('hide');
+            location.reload();
+        },
+        error: function(xhr) {
+            const error = JSON.parse(xhr.responseText);
+            alert('Error: ' + error.error);
+        }
+    });
+});
+
+// Update progress percentage based on status
+$('#newStatus').change(function() {
+    const status = $(this).val();
+    if (status === 'completed') {
+        $('#progressPercentage').val(100);
+    } else if (status === 'in_progress') {
+        $('#progressPercentage').val(50);
+    } else if (status === 'assigned') {
+        $('#progressPercentage').val(0);
+    }
+});
+</script>
+{% endblock custom_js %}

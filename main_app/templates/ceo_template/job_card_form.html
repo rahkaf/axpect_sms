@@ -1,0 +1,205 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+.form-section {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.required-field::after {
+    content: " *";
+    color: red;
+}
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">{{page_title}}</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="{% url 'admin_home' %}">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'admin_job_card_dashboard' %}">Job Cards</a></li>
+                        <li class="breadcrumb-item active">{{ form_action }}</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">{{ form_action }} Job Card</h3>
+                        </div>
+                        <form method="POST" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="card-body">
+                                {% if form.errors %}
+                                    <div class="alert alert-danger">
+                                        <h5><i class="icon fas fa-ban"></i> Please correct the following errors:</h5>
+                                        {% for field, errors in form.errors.items %}
+                                            {% for error in errors %}
+                                                <p>{{ field|capfirst }}: {{ error }}</p>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Basic Information -->
+                                <div class="form-section">
+                                    <h5 class="mb-3"><i class="fas fa-info-circle"></i> Basic Information</h5>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.title.id_for_label }}" class="required-field">Job Title</label>
+                                                {{ form.title }}
+                                                {% if form.title.help_text %}
+                                                    <small class="form-text text-muted">{{ form.title.help_text }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label for="{{ form.priority.id_for_label }}" class="required-field">Priority</label>
+                                                {{ form.priority }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label for="{{ form.type.id_for_label }}">Job Type</label>
+                                                {{ form.type }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label for="{{ form.description.id_for_label }}" class="required-field">Description</label>
+                                                {{ form.description }}
+                                                {% if form.description.help_text %}
+                                                    <small class="form-text text-muted">{{ form.description.help_text }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Assignment Details -->
+                                <div class="form-section">
+                                    <h5 class="mb-3"><i class="fas fa-user-tag"></i> Assignment Details</h5>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.assigned_to.id_for_label }}" class="required-field">Assign To</label>
+                                                {{ form.assigned_to }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.due_date.id_for_label }}">Due Date & Time</label>
+                                                {{ form.due_date }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Work Details -->
+                                <div class="form-section">
+                                    <h5 class="mb-3"><i class="fas fa-briefcase"></i> Work Details</h5>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.customer.id_for_label }}">Customer</label>
+                                                {{ form.customer }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.city.id_for_label }}">City</label>
+                                                {{ form.city }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label for="{{ form.related_item.id_for_label }}">Related Item</label>
+                                                {{ form.related_item }}
+                                                <small class="form-text text-muted">Select related product or item if applicable</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> {{ form_action }} Job Card
+                                </button>
+                                <a href="{% url 'admin_job_card_dashboard' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Set minimum date to today for due date
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const dueDateInput = document.getElementById('{{ form.due_date.id_for_label }}');
+    if (dueDateInput) {
+        dueDateInput.min = tomorrow.toISOString().slice(0, 16);
+    }
+    
+    // Form validation
+    $('form').on('submit', function(e) {
+        let isValid = true;
+        
+        // Check required fields
+        $('input[required], select[required], textarea[required]').each(function() {
+            if (!$(this).val()) {
+                isValid = false;
+                $(this).addClass('is-invalid');
+            } else {
+                $(this).removeClass('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields.');
+        }
+    });
+    
+    // Remove invalid class on input
+    $('input, select, textarea').on('input change', function() {
+        $(this).removeClass('is-invalid');
+    });
+});
+</script>
+{% endblock custom_js %}

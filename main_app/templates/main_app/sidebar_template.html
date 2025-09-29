@@ -1,0 +1,517 @@
+{% load static %}
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+
+{% if request.user.user_type == '1' %}
+    <!-- CEO/Admin Sidebar -->
+    <!-- Brand Logo -->
+    <a href="{% url 'admin_home' %}" class="brand-link">
+        <img src="{% static 'dist/img/AdminLTELogo.png' %}" alt="AdminLTE Logo"
+            class="brand-image img-circle elevation-3" style="opacity: .8">
+        <span class="brand-text font-weight-light">Axpect Technologies</span>
+    </a>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Sidebar user panel -->
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{{ request.user.profile_pic}}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="#" class="d-block">{{user}}</a>
+                <small class="text-muted">CEO/Admin</small>
+            </div>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    {% url 'admin_home' as admin_home %}
+                    <a href="{{admin_home}}" class="nav-link {% if admin_home == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+
+                <!-- Profile Management -->
+                <li class="nav-item">
+                    {% url 'admin_view_profile' as admin_view_profile %}
+                    <a href="{{admin_view_profile}}" class="nav-link {% if admin_view_profile == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-cog"></i>
+                        <p>My Profile</p>
+                    </a>
+                </li>
+
+                <!-- User Management -->
+                <li class="nav-header">USER MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'add_manager' as add_manager %}
+                    <a href="{{add_manager}}" class="nav-link {% if add_manager == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-plus"></i>
+                        <p>Add Manager</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manage_manager' as manage_manager %}
+                    <a href="{{manage_manager}}" class="nav-link {% if manage_manager == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-users-cog"></i>
+                        <p>Manage Managers</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'add_employee' as add_employee %}
+                    <a href="{{add_employee}}" class="nav-link {% if add_employee == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-plus"></i>
+                        <p>Add Employee</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manage_employee' as manage_employee %}
+                    <a href="{{manage_employee}}" class="nav-link {% if manage_employee == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>Manage Employees</p>
+                    </a>
+                </li>
+
+                <!-- Organization Structure -->
+                <li class="nav-header">ORGANIZATION</li>
+                
+                <li class="nav-item">
+                    {% url 'add_division' as add_division %}
+                    <a href="{{add_division}}" class="nav-link {% if add_division == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-plus-circle"></i>
+                        <p>Add Division</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manage_division' as manage_division %}
+                    <a href="{{manage_division}}" class="nav-link {% if manage_division == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-sitemap"></i>
+                        <p>Manage Divisions</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'add_department' as add_department %}
+                    <a href="{{add_department}}" class="nav-link {% if add_department == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-plus-square"></i>
+                        <p>Add Department</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manage_department' as manage_department %}
+                    <a href="{{manage_department}}" class="nav-link {% if manage_department == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-building"></i>
+                        <p>Manage Departments</p>
+                    </a>
+                </li>
+
+                <!-- Customer Management -->
+                <li class="nav-header">CUSTOMER MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'customers_manage' as customers_manage %}
+                    <a href="{{customers_manage}}" class="nav-link {% if customers_manage == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-handshake"></i>
+                        <p>Customer Management</p>
+                    </a>
+                </li>
+
+                <!-- Job Card Management -->
+                <li class="nav-header">JOB MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'admin_job_card_dashboard' as admin_job_card_dashboard %}
+                    <a href="{{admin_job_card_dashboard}}" class="nav-link {% if admin_job_card_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+                        <p>Job Card Management</p>
+                    </a>
+                </li>
+
+                <!-- Attendance Management -->
+                <li class="nav-header">ATTENDANCE</li>
+                
+                <li class="nav-item">
+                    {% url 'admin_view_attendance' as admin_view_attendance %}
+                    <a href="{{admin_view_attendance}}" class="nav-link {% if admin_view_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>View Attendance</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'admin_gps_attendance_dashboard' as admin_gps_attendance_dashboard %}
+                    <a href="{{admin_gps_attendance_dashboard}}" class="nav-link {% if admin_gps_attendance_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marker-alt"></i>
+                        <p>GPS Attendance Dashboard</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'admin_mark_attendance' as admin_mark_attendance %}
+                    <a href="{{admin_mark_attendance}}" class="nav-link {% if admin_mark_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-check"></i>
+                        <p>Mark My Attendance</p>
+                    </a>
+                </li>
+
+                <!-- Communication -->
+                <li class="nav-header">COMMUNICATION</li>
+                
+                <li class="nav-item">
+                    {% url 'employee_feedback_message' as employee_feedback_message %}
+                    <a href="{{ employee_feedback_message }}" class="nav-link {% if employee_feedback_message == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-comment-dots"></i>
+                        <p>Employee Feedback</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_feedback_message' as manager_feedback_message %}
+                    <a href="{{manager_feedback_message}}" class="nav-link {% if manager_feedback_message == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-comments"></i>
+                        <p>Manager Feedback</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'admin_notify_manager' as admin_notify_manager %}
+                    <a href="{{admin_notify_manager}}" class="nav-link {% if admin_notify_manager == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>Notify Manager</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'admin_notify_employee' as admin_notify_employee %}
+                    <a href="{{admin_notify_employee}}" class="nav-link {% if admin_notify_employee == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bullhorn"></i>
+                        <p>Notify Employee</p>
+                    </a>
+                </li>
+
+                <!-- Leave Management -->
+                <li class="nav-header">LEAVE MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'view_manager_leave' as view_manager_leave %}
+                    <a href="{{view_manager_leave}}" class="nav-link {% if view_manager_leave == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-minus"></i>
+                        <p>Manager Leave</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'view_employee_leave' as view_employee_leave %}
+                    <a href="{% url 'view_employee_leave' %}" class="nav-link {% if view_employee_leave == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-times"></i>
+                        <p>Employee Leave</p>
+                    </a>
+                </li>
+
+                <!-- Logout -->
+                <li class="nav-header">SYSTEM</li>
+                
+                <li class="nav-item">
+                    <a href="{% url 'user_logout' %}" onclick="return confirm('Your session will be terminated.\\n\\nProceed?')" class="nav-link">
+                        <i class="nav-icon fas fa-sign-out-alt text-danger"></i>
+                        <p>Logout</p>
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+    </div>
+
+{% elif request.user.user_type == '2' %}
+    <!-- Manager Sidebar -->
+    <!-- Brand Logo -->
+    <a href="{% url 'manager_home' %}" class="brand-link">
+        <img src="{% static 'dist/img/AdminLTELogo.png' %}" alt="AdminLTE Logo"
+            class="brand-image img-circle elevation-3" style="opacity: .8">
+        <span class="brand-text font-weight-light">Axpect Technologies</span>
+    </a>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Sidebar user panel -->
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{{ request.user.profile_pic}}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="#" class="d-block">{{ user}}</a>
+                <small class="text-muted">Manager, Regional</small>
+            </div>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    {% url 'manager_home' as manager_home %}
+                    <a href="{{manager_home}}" class="nav-link {% if manager_home == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+
+                <!-- Profile Management -->
+                <li class="nav-item">
+                    {% url 'manager_view_profile' as manager_view_profile %}
+                    <a href="{{manager_view_profile}}" class="nav-link {% if manager_view_profile == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-cog"></i>
+                        <p>My Profile</p>
+                    </a>
+                </li>
+
+                <!-- Salary Management -->
+                <li class="nav-header">SALARY MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'manager_add_salary' as manager_add_salary %}
+                    <a href="{{manager_add_salary}}" class="nav-link {% if manager_add_salary == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-dollar-sign"></i>
+                        <p>Add Salary</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'edit_employee_salary' as edit_employee_salary %}
+                    <a href="{{edit_employee_salary}}" class="nav-link {% if edit_employee_salary == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-edit"></i>
+                        <p>Edit Salary</p>
+                    </a>
+                </li>
+
+                <!-- Job Card Management -->
+                <li class="nav-header">JOB MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'manager_job_card_dashboard' as manager_job_card_dashboard %}
+                    <a href="{{manager_job_card_dashboard}}" class="nav-link {% if manager_job_card_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+                        <p>Job Card Management</p>
+                    </a>
+                </li>
+
+                <!-- Attendance Management -->
+                <li class="nav-header">ATTENDANCE</li>
+                
+                <li class="nav-item">
+                    {% url 'manager_take_attendance' as manager_take_attendance %}
+                    <a href="{{manager_take_attendance}}" class="nav-link {% if manager_take_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>Take Attendance</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_gps_attendance_dashboard' as manager_gps_attendance_dashboard %}
+                    <a href="{{manager_gps_attendance_dashboard}}" class="nav-link {% if manager_gps_attendance_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marker-alt"></i>
+                        <p>GPS Attendance Dashboard</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_update_attendance' as manager_update_attendance %}
+                    <a href="{{manager_update_attendance}}" class="nav-link {% if manager_update_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-edit"></i>
+                        <p>View/Update Attendance</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_mark_attendance' as manager_mark_attendance %}
+                    <a href="{{manager_mark_attendance}}" class="nav-link {% if manager_mark_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-check"></i>
+                        <p>Mark My Attendance</p>
+                    </a>
+                </li>
+
+                <!-- Communication -->
+                <li class="nav-header">COMMUNICATION</li>
+                
+                <li class="nav-item">
+                    {% url 'manager_view_notification' as manager_view_notification %}
+                    <a href="{{manager_view_notification}}" class="nav-link {% if manager_view_notification == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>View Notifications</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_feedback' as manager_feedback %}
+                    <a href="{{manager_feedback}}" class="nav-link {% if manager_feedback == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-comment-dots"></i>
+                        <p>Feedback</p>
+                    </a>
+                </li>
+
+                <!-- Leave Management -->
+                <li class="nav-header">LEAVE</li>
+                
+                <li class="nav-item">
+                    {% url 'manager_apply_leave' as manager_apply_leave %}
+                    <a href="{{manager_apply_leave}}" class="nav-link {% if manager_apply_leave == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-minus"></i>
+                        <p>Apply For Leave</p>
+                    </a>
+                </li>
+
+                <!-- Logout -->
+                <li class="nav-header">SYSTEM</li>
+                
+                <li class="nav-item">
+                    <a href="{% url 'user_logout' %}" onclick="return confirm('Your session will be terminated.\\n\\nProceed?')" class="nav-link">
+                        <i class="nav-icon fas fa-sign-out-alt text-danger"></i>
+                        <p>Logout</p>
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+    </div>
+
+{% else %}
+    <!-- Employee Sidebar -->
+    <!-- Brand Logo -->
+    <a href="{% url 'employee_home' %}" class="brand-link">
+        <img src="{% static 'dist/img/AdminLTELogo.png' %}" alt="AdminLTE Logo"
+            class="brand-image img-circle elevation-3" style="opacity: .8">
+        <span class="brand-text font-weight-light">Axpect Technologies</span>
+    </a>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <!-- Sidebar user panel -->
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{{ request.user.profile_pic}}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="#" class="d-block">{{user}}</a>
+                <small class="text-muted">Employee</small>
+            </div>
+        </div>
+
+        <!-- Sidebar Menu -->
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    {% url 'employee_home' as employee_home %}
+                    <a href="{{employee_home}}" class="nav-link {% if employee_home == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-tachometer-alt"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+
+                <!-- Profile Management -->
+                <li class="nav-item">
+                    {% url 'employee_view_profile' as employee_view_profile %}
+                    <a href="{{employee_view_profile}}" class="nav-link {% if employee_view_profile == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-cog"></i>
+                        <p>My Profile</p>
+                    </a>
+                </li>
+
+                <!-- Salary -->
+                <li class="nav-item">
+                    {% url 'employee_view_salary' as employee_view_salary %}
+                    <a href="{% url 'employee_view_salary' %}" class="nav-link {% if employee_view_salary == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-dollar-sign"></i>
+                        <p>View Salary</p>
+                    </a>
+                </li>
+
+                <!-- Job Management -->
+                <li class="nav-header">JOB MANAGEMENT</li>
+                
+                <li class="nav-item">
+                    {% url 'employee_job_card_dashboard' as employee_job_card_dashboard %}
+                    <a href="{{employee_job_card_dashboard}}" class="nav-link {% if employee_job_card_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-clipboard-list"></i>
+                        <p>My Job Cards</p>
+                    </a>
+                </li>
+
+                <!-- Attendance -->
+                <li class="nav-header">ATTENDANCE</li>
+                
+                <li class="nav-item">
+                    {% url 'employee_view_attendance' as employee_view_attendance %}
+                    <a href="{{employee_view_attendance}}" class="nav-link {% if employee_view_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>View Attendance</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'employee_gps_attendance' as employee_gps_attendance %}
+                    <a href="{{employee_gps_attendance}}" class="nav-link {% if employee_gps_attendance == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marker-alt"></i>
+                        <p>GPS Attendance</p>
+                    </a>
+                </li>
+
+                <!-- Communication -->
+                <li class="nav-header">COMMUNICATION</li>
+                
+                <li class="nav-item">
+                    {% url 'employee_view_notification' as employee_view_notification %}
+                    <a href="{{employee_view_notification}}" class="nav-link {% if employee_view_notification == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>View Notifications</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'employee_feedback' as employee_feedback %}
+                    <a href="{{employee_feedback}}" class="nav-link {% if employee_feedback == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-comment-dots"></i>
+                        <p>Feedback</p>
+                    </a>
+                </li>
+
+                <!-- Leave -->
+                <li class="nav-header">LEAVE</li>
+                
+                <li class="nav-item">
+                    {% url 'employee_apply_leave' as employee_apply_leave %}
+                    <a href="{{employee_apply_leave}}" class="nav-link {% if employee_apply_leave == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-calendar-minus"></i>
+                        <p>Apply For Leave</p>
+                    </a>
+                </li>
+
+                <!-- Logout -->
+                <li class="nav-header">SYSTEM</li>
+                
+                <li class="nav-item">
+                    <a href="{% url 'user_logout' %}" onclick="return confirm('Your session will be terminated.\\n\\nProceed?')" class="nav-link">
+                        <i class="nav-icon fas fa-sign-out-alt text-danger"></i>
+                        <p>Logout</p>
+                    </a>
+                </li>
+
+            </ul>
+        </nav>
+    </div>
+
+{% endif %}
+
+</aside>

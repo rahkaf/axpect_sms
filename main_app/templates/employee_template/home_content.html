@@ -1,0 +1,611 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Small boxes (Stat box) -->
+        <div class="row">
+            <div class="col-lg-3 col-6">
+                <!-- small box -->
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3>{{total_attendance}}</h3>
+                        <p>Total Attendance</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-bag"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- ./col -->
+            <div class="col-lg-3 col-6">
+                <!-- small box -->
+                <div class="small-box bg-success">
+                    <div class="inner">
+                        <h3>{{ percent_present }}<sup style="font-size: 20px">%</sup></h3>
+                        <p>Percentage Present</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-person-add"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- ./col -->
+            <div class="col-lg-3 col-6">
+                <!-- small box -->
+                <div class="small-box bg-danger">
+                    <div class="inner">
+                        <h3>{{percent_absent}}<sup style="font-size: 20px">%</sup></h3>
+                        <p>Percentage Absent</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-stats-bars"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- ./col -->
+            <div class="col-lg-3 col-6">
+                <!-- small box -->
+                <div class="small-box bg-warning">
+                    <div class="inner">
+                        <h3>{{total_department}}</h3>
+                        <p>Total Department</p>
+                    </div>
+                    <div class="icon">
+                        <i class="ion ion-pie-graph"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- ./col -->
+        </div>
+        
+        <!-- Enhanced GPS Attendance Section -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-map-marker-alt"></i> GPS Attendance System
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-light" id="current-time"></span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- GPS Status Alert -->
+                        <div class="alert alert-info" id="gps-status">
+                            <i class="fas fa-spinner fa-spin"></i> Getting your location...
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card bg-info">
+                                    <div class="card-header">
+                                        <h5 class="text-white"><i class="fas fa-clipboard-list"></i> Job Cards</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <a href="{% url 'employee_job_card_dashboard' %}" class="btn btn-light btn-lg">
+                                            <i class="fas fa-tasks"></i> View My Job Cards
+                                        </a>
+                                        <p class="text-white mt-2 mb-0">
+                                            <small>{{ total_tasks }} total tasks assigned</small>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        
+                        <!-- Attendance Actions -->
+                            <div class="col-md-4">
+                                <div class="card bg-success">
+                                    <div class="card-header">
+                                        <h5 class="text-white"><i class="fas fa-sign-in-alt"></i> Check In</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        {% if today_attendance and today_attendance.checkin_time %}
+                                            <p class="text-white">
+                                                <i class="fas fa-check-circle"></i> 
+                                                Already checked in at {{ today_attendance.checkin_time|time:"H:i:s" }}
+                                            </p>
+                                            {% if today_attendance.checkin_gps %}
+                                                <small class="text-light">Location: {{ today_attendance.checkin_gps }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            <form method="POST" action="{% url 'simple_checkin' %}" id="checkin-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="gps" id="gps-input" value="">
+                                                <button type="submit" class="btn btn-light btn-lg" id="checkin-btn" disabled>
+                                                    <i class="fas fa-map-marker-alt"></i> Check In Now
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card bg-warning">
+                                    <div class="card-header">
+                                        <h5 class="text-white"><i class="fas fa-sign-out-alt"></i> Check Out</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        {% if today_attendance and today_attendance.checkout_time %}
+                                            <p class="text-white">
+                                                <i class="fas fa-check-circle"></i> 
+                                                Already checked out at {{ today_attendance.checkout_time|time:"H:i:s" }}
+                                            </p>
+                                            {% if today_attendance.checkout_gps %}
+                                                <small class="text-light">Location: {{ today_attendance.checkout_gps }}</small>
+                                            {% endif %}
+                                        {% elif today_attendance and today_attendance.checkin_time %}
+                                            <form method="POST" action="{% url 'simple_checkout' %}" id="checkout-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="gps" id="gps-output" value="">
+                                                <div class="mb-3">
+                                                    <textarea name="notes" class="form-control" rows="2" placeholder="Work notes (optional)..."></textarea>
+                                                </div>
+                                                <button type="submit" class="btn btn-light btn-lg" id="checkout-btn" disabled>
+                                                    <i class="fas fa-map-marker-alt"></i> Check Out Now
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <p class="text-white">
+                                                <i class="fas fa-info-circle"></i> 
+                                                Please check in first
+                                            </p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Details -->
+                        <div class="row mt-3" id="location-details" style="display: none;">
+                            <div class="col-md-12">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6><i class="fas fa-satellite-dish"></i> Current Location Details:</h6>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <strong>Latitude:</strong> <span id="current-lat">-</span>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Longitude:</strong> <span id="current-lng">-</span>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <strong>Accuracy:</strong> <span id="current-accuracy">-</span> meters
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Performance & Task Statistics Row -->
+        <div class="row">
+            <!-- Task Statistics Card -->
+            <div class="col-lg-6">
+                <div class="card card-info">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-tasks"></i> Task Statistics
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-box bg-primary">
+                                    <span class="info-box-icon"><i class="fas fa-list"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total Tasks</span>
+                                        <span class="info-box-number">{{ total_tasks }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box bg-success">
+                                    <span class="info-box-icon"><i class="fas fa-check"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Completed</span>
+                                        <span class="info-box-number">{{ completed_tasks }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-box bg-warning">
+                                    <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Pending</span>
+                                        <span class="info-box-number">{{ pending_tasks }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-box bg-danger">
+                                    <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Overdue</span>
+                                        <span class="info-box-number">{{ overdue_tasks }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if total_tasks > 0 %}
+                        <div class="progress mb-3">
+                            <div class="progress-bar bg-success" style="width: {{ completed_tasks|floatformat:0 }}%">
+                                {{ completed_tasks|floatformat:0 }}% Complete
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Performance Ratings Card -->
+            <div class="col-lg-6">
+                <div class="card card-warning">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-star"></i> Performance Ratings
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if avg_rating > 0 %}
+                        <div class="text-center mb-3">
+                            <h2 class="text-warning">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= avg_rating %}
+                                        <i class="fas fa-star"></i>
+                                    {% else %}
+                                        <i class="far fa-star"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </h2>
+                            <p class="text-muted">Average Rating: {{ avg_rating }}/5</p>
+                        </div>
+                        {% endif %}
+                        
+                        <h6><i class="fas fa-history"></i> Recent Ratings:</h6>
+                        {% if recent_ratings %}
+                            <div class="timeline">
+                                {% for rating in recent_ratings %}
+                                <div class="time-label">
+                                    <span class="bg-info">{{ rating.date|date:"M d" }}</span>
+                                </div>
+                                <div>
+                                    <i class="fas fa-star bg-warning"></i>
+                                    <div class="timeline-item">
+                                        <span class="time">
+                                            <i class="fas fa-clock"></i> {{ rating.rating_date|date:"H:i" }}
+                                        </span>
+                                        <h3 class="timeline-header">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= rating.performance_rating %}
+                                                    <i class="fas fa-star text-warning"></i>
+                                                {% else %}
+                                                    <i class="far fa-star text-muted"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                            ({{ rating.performance_rating }}/5)
+                                        </h3>
+                                        {% if rating.rating_comments %}
+                                        <div class="timeline-body">
+                                            {{ rating.rating_comments }}
+                                        </div>
+                                        {% endif %}
+                                        <div class="timeline-footer">
+                                            <small class="text-muted">
+                                                Rated by: {{ rating.rating_given_by.first_name }} {{ rating.rating_given_by.last_name }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> No performance ratings yet. Complete your work and get rated by your manager!
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="row">
+            <div class="col-lg-6">
+                <!-- DONUT CHART -->
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="button" class="btn btn-tool" data-card-widget="remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="attendanceData" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card card-secondary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="button" class="btn btn-tool" data-card-widget="remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart">
+                            <canvas id="attendanceStatistics" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function(){
+    let currentPosition = null;
+    
+    // Update current time
+    function updateDateTime() {
+        const now = new Date();
+        $('#current-time').text(now.toLocaleTimeString());
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+    
+    // Get GPS location
+    function getLocation() {
+        if (!navigator.geolocation) {
+            $('#gps-status').removeClass('alert-info').addClass('alert-danger')
+                .html('<i class="fas fa-exclamation-triangle"></i> GPS not supported by this browser.');
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                currentPosition = position;
+                const lat = position.coords.latitude.toFixed(6);
+                const lng = position.coords.longitude.toFixed(6);
+                const gpsString = `${lat},${lng}`;
+                
+                // Update UI
+                $('#gps-status').removeClass('alert-info').addClass('alert-success')
+                    .html('<i class="fas fa-check-circle"></i> GPS location acquired successfully!');
+                
+                $('#current-lat').text(lat);
+                $('#current-lng').text(lng);
+                $('#current-accuracy').text(Math.round(position.coords.accuracy));
+                $('#location-details').show();
+                
+                // Set GPS data in forms
+                $('#gps-input').val(gpsString);
+                $('#gps-output').val(gpsString);
+                
+                // Enable buttons
+                $('#checkin-btn').prop('disabled', false);
+                $('#checkout-btn').prop('disabled', false);
+            },
+            function(error) {
+                let errorMsg = 'GPS error: ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMsg += 'Location access denied. Please enable location services.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMsg += 'Location unavailable. Please check GPS settings.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMsg += 'Location request timed out. Please try again.';
+                        break;
+                    default:
+                        errorMsg += 'Unknown error occurred.';
+                        break;
+                }
+                
+                $('#gps-status').removeClass('alert-info').addClass('alert-danger')
+                    .html('<i class="fas fa-exclamation-triangle"></i> ' + errorMsg + 
+                          ' <button class="btn btn-sm btn-warning ml-2" onclick="location.reload()">Retry</button>');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
+            }
+        );
+    }
+    
+    // Form submission handlers
+    $('#checkin-form').on('submit', function() {
+        $('#checkin-btn').prop('disabled', true)
+            .html('<i class="fas fa-spinner fa-spin"></i> Checking In...');
+    });
+    
+    $('#checkout-form').on('submit', function() {
+        $('#checkout-btn').prop('disabled', true)
+            .html('<i class="fas fa-spinner fa-spin"></i> Checking Out...');
+    });
+    
+    // Initialize GPS
+    getLocation();
+
+    //Dataset for charts
+    var departments = {{data_name|safe}};
+    var data_present = {{data_present}};
+    var data_absent = {{data_absent}};
+
+    //-------------
+    //- DONUT CHART -
+    var attendanceDataCanvas = $('#attendanceData').get(0).getContext('2d');
+    var donutData = {
+        labels: ['Present', 'Absent'],
+        datasets: [{
+            data: [{{percent_present}}, {{percent_absent}}],
+            backgroundColor: ['#00a65a','#f56954'],
+        }]
+    };
+    var donutOptions = {
+        maintainAspectRatio: false,
+        responsive: true,
+    };
+    var attendanceData = new Chart(attendanceDataCanvas, {
+        type: 'doughnut',
+        data: donutData,
+        options: donutOptions      
+    });
+
+    //attendanceStatistics - Bar Chart
+    var areaChartData = {
+        labels: departments,
+        datasets: [
+            {
+                label: 'Present In Class',
+                backgroundColor: 'rgba(60,141,188,0.9)',
+                borderColor: 'rgba(60,141,188,0.8)',
+                pointRadius: false,
+                pointColor: '#3b8bba',
+                pointStrokeColor: 'rgba(60,141,188,1)',
+                pointHighlightFill: '#fff',
+                pointHighlightStroke: 'rgba(60,141,188,1)',
+                data: data_present
+            },
+            {
+                label: 'Absent In Class',
+                backgroundColor: 'rgba(210, 214, 222, 1)',
+                borderColor: 'rgba(210, 214, 222, 1)',
+                pointRadius: false,
+                pointColor: 'rgba(210, 214, 222, 1)',
+                pointStrokeColor: '#c1c7d1',
+                pointHighlightFill: '#fff',
+                pointHighlightStroke: 'rgba(220,220,220,1)',
+                data: data_absent
+            }
+        ]
+    };
+    
+    var barChartCanvas = $('#attendanceStatistics').get(0).getContext('2d');
+    var barChartData = jQuery.extend(true, {}, areaChartData);
+    var temp = areaChartData.datasets[0];
+    barChartData.datasets[0] = temp;
+    var barChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        datasetFill: false
+    };
+
+    var barChart = new Chart(barChartCanvas, {
+        type: 'bar', 
+        data: barChartData,
+        options: barChartOptions
+    });
+});
+
+// Firebase messaging setup
+// The core Firebase JS SDK is always required and must be listed first
+</script>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
+
+<script>
+// Your web app's Firebase configuration
+var firebaseConfig = {
+    apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
+    authDomain: "sms-with-django.firebaseapp.com",
+    databaseURL: "https://sms-with-django.firebaseio.com",
+    projectId: "sms-with-django",
+    storageBucket: "sms-with-django.appspot.com",
+    messagingSenderId: "945324593139",
+    appId: "1:945324593139:web:03fa99a8854bbd38420c86",
+    measurementId: "G-2F2RXTL9GT"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+function InitializeFireBaseMessaging() {
+    messaging
+        .requestPermission()
+        .then(function () {
+            console.log("Notification Permission");
+            return messaging.getToken();
+        })
+        .then(function (token) {
+            console.log("Token : " + token);
+            sendToServer(token);
+        })
+        .catch(function (reason) {
+            console.log(reason);
+        });
+}
+
+messaging.onMessage(function (payload) {
+    const notificationOption = {
+        body: payload.notification.body,
+        icon: payload.notification.icon,
+    };
+    if (Notification.permission == 'granted') {
+        var notification = new Notification(payload.notification.title, notificationOption);
+        notification.onclick = function (event) {
+            event.preventDefault();
+            window.open(payload.notification.click_action, "_blank");
+            notification.close();
+        };
+    }
+    console.log(payload);
+});
+
+messaging.onTokenRefresh(function () {
+    messaging.getToken()
+        .then(function (newToken) {
+            console.log("New Token : " + newToken);
+            sendToServer(newToken);
+        })
+        .catch(function (reason) {
+            console.log(reason);
+        });
+});
+
+function sendToServer(token){
+    $.ajax({
+        url: "{% url 'employee_fcmtoken' %}",
+        type: 'POST',
+        data: {
+            token: token,
+        }
+    }).done(function (response) {
+        // Token sent successfully
+    }).fail(function (response) {
+        console.log("Failed to send token");
+    });
+}
+</script>
+{% endblock custom_js %}

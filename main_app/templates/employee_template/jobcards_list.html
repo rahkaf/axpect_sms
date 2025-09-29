@@ -1,0 +1,73 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+{% block content %}
+<section class="content">
+	<div class="container-fluid">
+		<div class="row">
+			<div class="col-12">
+				<div class="card">
+					<div class="card-header">
+						<h3 class="card-title">Assigned JobCards</h3>
+					</div>
+					<div class="card-body table-responsive p-0">
+						<table class="table table-hover text-nowrap">
+							<thead>
+								<tr>
+									<th>ID</th>
+									<th>Type</th>
+									<th>Priority</th>
+									<th>Status</th>
+									<th>Customer</th>
+									<th>City</th>
+									<th>Due</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for jc in jobcards %}
+								<tr>
+									<td>{{ jc.id }}</td>
+									<td>{{ jc.get_type_display }}</td>
+									<td>{{ jc.get_priority_display }}</td>
+									<td>{{ jc.get_status_display }}</td>
+									<td>{% if jc.customer %}{{ jc.customer.name }}{% else %}-{% endif %}</td>
+									<td>{% if jc.city %}{{ jc.city.name }}{% else %}-{% endif %}</td>
+									<td>{% if jc.due_at %}{{ jc.due_at }}{% else %}-{% endif %}</td>
+									<td>
+										{% if jc.status != 'COMPLETED' %}
+										<button class="btn btn-xs btn-success js-complete" data-id="{{ jc.id }}">Complete</button>
+										<a href="{% url 'order_create_for_jobcard' jc.id %}" class="btn btn-xs btn-primary">Add Order</a>
+										{% else %}
+										<span class="badge bg-success">Done</span>
+										{% endif %}
+									</td>
+								</tr>
+								{% empty %}
+								<tr><td colspan="7" class="text-center text-muted">No jobcards assigned.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock content %}
+{% block custom_js %}
+<script>
+document.addEventListener('click', async function(e){
+	if(e.target && e.target.classList.contains('js-complete')){
+		const id = e.target.getAttribute('data-id');
+		try{
+			await fetch(`/api/jobcards/${id}/status/`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status:'COMPLETED'})});
+			location.reload();
+		}catch(err){
+			alert('Failed to complete jobcard');
+		}
+	}
+});
+</script>
+{% endblock custom_js %}
+

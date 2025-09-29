@@ -1,0 +1,322 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+.job-card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.info-card {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-left: 4px solid #007bff;
+}
+.status-badge {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+}
+.priority-badge {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+}
+.comment-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 3px solid #007bff;
+}
+.time-log-item {
+    background: #e8f5e8;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-left: 3px solid #28a745;
+}
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">{{page_title}}</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="{% url 'manager_home' %}">Home</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'manager_job_card_dashboard' %}">Job Cards</a></li>
+                        <li class="breadcrumb-item active">{{ job_card.job_card_number }}</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Job Card Header -->
+            <div class="job-card-header">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h3 class="mb-2">{{ job_card.title }}</h3>
+                        <p class="mb-1"><strong>Job Card #:</strong> {{ job_card.job_card_number }}</p>
+                        <p class="mb-0"><strong>Type:</strong> {{ job_card.get_type_display|default:"Not specified" }}</p>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        <span class="badge badge-{{ job_card.status_color }} status-badge mb-2">
+                            {{ job_card.get_status_display }}
+                        </span><br>
+                        <span class="badge badge-{{ job_card.priority_color }} priority-badge">
+                            {{ job_card.get_priority_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Job Card Details -->
+                <div class="col-md-8">
+                    <!-- Basic Information -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-info-circle"></i> Job Details</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-card">
+                                <h6><i class="fas fa-align-left"></i> Description</h6>
+                                <p>{{ job_card.description|default:"No description provided" }}</p>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-card">
+                                        <h6><i class="fas fa-user"></i> Assigned To</h6>
+                                        <p>
+                                            {% if job_card.assigned_to and job_card.assigned_to.admin %}
+                                                {{ job_card.assigned_to.admin.first_name }} {{ job_card.assigned_to.admin.last_name }}
+                                            {% else %}
+                                                Unassigned
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-card">
+                                        <h6><i class="fas fa-user-tie"></i> Assigned By</h6>
+                                        <p>
+                                            {% if job_card.assigned_by %}
+                                                {{ job_card.assigned_by.first_name }} {{ job_card.assigned_by.last_name }}
+                                            {% else %}
+                                                System
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="info-card">
+                                        <h6><i class="fas fa-calendar"></i> Created Date</h6>
+                                        <p>{{ job_card.created_date|date:"M d, Y H:i" }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-card">
+                                        <h6><i class="fas fa-clock"></i> Due Date</h6>
+                                        <p>
+                                            {% if job_card.due_date %}
+                                                {{ job_card.due_date|date:"M d, Y H:i" }}
+                                                {% if job_card.is_overdue %}
+                                                    <span class="badge badge-danger ml-2">Overdue</span>
+                                                {% endif %}
+                                            {% else %}
+                                                Not set
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if job_card.customer or job_card.city %}
+                            <div class="row">
+                                {% if job_card.customer %}
+                                <div class="col-md-6">
+                                    <div class="info-card">
+                                        <h6><i class="fas fa-building"></i> Customer</h6>
+                                        <p>{{ job_card.customer.name }}</p>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if job_card.city %}
+                                <div class="col-md-6">
+                                    <div class="info-card">
+                                        <h6><i class="fas fa-map-marker-alt"></i> City</h6>
+                                        <p>{{ job_card.city.name }}</p>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-comments"></i> Comments</h3>
+                        </div>
+                        <div class="card-body">
+                            {% if comments %}
+                                {% for comment in comments %}
+                                <div class="comment-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>{{ comment.user.first_name }} {{ comment.user.last_name }}</strong>
+                                        <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+                                    </div>
+                                    <p class="mt-2 mb-0">{{ comment.comment }}</p>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted">No comments yet.</p>
+                            {% endif %}
+
+                            {% if can_edit and comment_form %}
+                            <form method="POST" class="mt-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="form_type" value="comment">
+                                <div class="form-group">
+                                    <label for="{{ comment_form.comment.id_for_label }}">Add Comment</label>
+                                    {{ comment_form.comment }}
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-comment"></i> Add Comment
+                                </button>
+                            </form>
+                            {% elif can_edit %}
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle"></i> Comments feature is not available in this database configuration.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Sidebar -->
+                <div class="col-md-4">
+                    {% if can_edit and update_form %}
+                    <!-- Update Status -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-edit"></i> Update Job Card</h3>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="form_type" value="update">
+                                
+                                <div class="form-group">
+                                    <label for="{{ update_form.status.id_for_label }}">Status</label>
+                                    {{ update_form.status }}
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="{{ update_form.description.id_for_label }}">Update Description</label>
+                                    {{ update_form.description }}
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success btn-block">
+                                    <i class="fas fa-save"></i> Update Job Card
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Quick Actions -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h3>
+                        </div>
+                        <div class="card-body text-left">
+                            <a href="{% url 'manager_job_card_dashboard' %}" class="btn btn-secondary btn-block">
+                                <i class="fas fa-arrow-left"></i> Back to Dashboard
+                            </a>
+                            {% if can_edit %}
+                            <button class="btn btn-warning btn-block mt-2" onclick="updateStatus('IN_PROGRESS')">
+                                <i class="fas fa-play"></i> Mark In Progress
+                            </button>
+                            <button class="btn btn-success btn-block mt-2" onclick="updateStatus('COMPLETED')">
+                                <i class="fas fa-check"></i> Mark Completed
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Time Logs -->
+                    {% if time_logs %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title"><i class="fas fa-clock"></i> Time Logs</h3>
+                        </div>
+                        <div class="card-body">
+                            {% for log in time_logs %}
+                            <div class="time-log-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>{{ log.user.first_name }} {{ log.user.last_name }}</strong>
+                                    <small class="text-muted">{{ log.created_at|date:"M d, Y H:i" }}</small>
+                                </div>
+                                <p class="mt-2 mb-0">{{ log.description }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+function updateStatus(status) {
+    if (confirm('Are you sure you want to update the status to ' + status + '?')) {
+        fetch('{% url "update_job_card_status" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                job_card_id: {{ job_card.id }},
+                status: status
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating the status.');
+        });
+    }
+}
+</script>
+{% endblock custom_js %}
