@@ -407,9 +407,15 @@ def simple_checkin(request):
         employee = get_object_or_404(Employee, admin=request.user)
         gps = request.POST.get('gps', '')
         
+        # Debug: Check what GPS data we received
+        print(f"DEBUG Employee Checkin: User {request.user.email} attempting checkin")
+        print(f"DEBUG Employee Checkin: GPS data received: '{gps}'")
+        print(f"DEBUG Employee Checkin: GPS length: {len(gps) if gps else 0}")
+        
         # Get today's date
         from django.utils import timezone
         today = timezone.localdate()
+        print(f"DEBUG Employee Checkin: Today's date: {today}")
         
         # Create or get individual employee attendance record
         try:
@@ -417,12 +423,15 @@ def simple_checkin(request):
                 employee=employee, 
                 date=today
             )
+            print(f"DEBUG Employee Checkin: Attendance record {'created' if created else 'found'}")
         except Exception as e:
+            print(f"DEBUG Employee Checkin: Database error: {e}")
             messages.error(request, f"Database error: Please run migrations first. Error: {str(e)}")
             return redirect('employee_home')
         
         # Check if already checked in
         if attendance.checkin_time:
+            print(f"DEBUG Employee Checkin: Already checked in at {attendance.checkin_time}")
             messages.warning(request, f"You have already checked in today at {attendance.checkin_time.strftime('%H:%M:%S')}!")
             return redirect('employee_home')
         
@@ -431,6 +440,7 @@ def simple_checkin(request):
         attendance.checkin_gps = gps
         attendance.save()
         
+        print(f"DEBUG Employee Checkin: Saved - Time: {attendance.checkin_time}, GPS: '{attendance.checkin_gps}'")
         messages.success(request, f"Successfully checked in at {attendance.checkin_time.strftime('%H:%M:%S')} with GPS location!")
         
     except Exception as e:
@@ -493,3 +503,127 @@ def simple_checkout(request):
         messages.error(request, f"Check-out failed: {str(e)}")
     
     return redirect('employee_home')
+
+
+def employee_live_gps_map(request):
+    """Employee Live GPS Map - Shows only themselves and their manager"""
+    if request.user.user_type != '3':  # Only Employee can access
+        messages.error(request, "Access denied. Employee access required.")
+        return redirect('employee_home')
+    
+    context = {
+        'page_title': 'Live GPS Map - My Location'
+    }
+    return render(request, 'employee_template/live_gps_map.html', context)
+
+
+@csrf_exempt
+def employee_gps_data_api(request):
+    """API endpoint for Employee to fetch GPS data of themselves and their manager"""
+    if request.user.user_type != '3':  # Only Employee can access
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    try:
+        from datetime import date
+        today = date.today()
+        
+        employee = Employee.objects.get(admin=request.user)
+        gps_data = []
+        
+        # Debug: Check employee GPS records
+        all_employee_records = EmployeeGPSAttendance.objects.filter(employee=employee, date=today)
+        print(f"DEBUG Employee API: Found {all_employee_records.count()} records for {request.user.email} today")
+        for record in all_employee_records:
+            print(f"DEBUG Employee API: Record - GPS: '{record.checkin_gps}', Time: {record.checkin_time}")
+        
+        # Get employee's own GPS location for today (only if they are online and recently active)
+        from datetime import timedelta
+        recent_threshold = timezone.now() - timedelta(minutes=10)
+        
+        # Only show employee's own location if they are online and recently active
+        if employee.admin.is_online and employee.admin.last_seen and employee.admin.last_seen >= recent_threshold:
+            try:
+                employee_attendance = EmployeeGPSAttendance.objects.filter(
+                    employee=employee,
+                    date=today,
+                    checkin_gps__isnull=False,
+                    checkin_gps__gt=''  # Ensure GPS is not empty
+                ).order_by('-checkin_time').first()
+                
+                print(f"DEBUG Employee API: Latest attendance record: {employee_attendance}")
+                if employee_attendance:
+                    print(f"DEBUG Employee API: GPS data: '{employee_attendance.checkin_gps}'")
+                
+                if employee_attendance and employee_attendance.checkin_gps.strip():
+                    coords = employee_attendance.checkin_gps.split(',')
+                    if len(coords) == 2:
+                        lat = float(coords[0].strip())
+                        lng = float(coords[1].strip())
+                        
+                        gps_data.append({
+                            'user_id': employee.admin.id,
+                            'name': f"{employee.admin.first_name} {employee.admin.last_name}",
+                            'role': 'Employee (You)',
+                            'lat': lat,
+                            'lng': lng,
+                            'marker_color': 'green',
+                            'last_seen': employee.admin.last_seen.isoformat() if employee.admin.last_seen else None,
+                            'checkin_time': employee_attendance.checkin_time.isoformat() if employee_attendance.checkin_time else None,
+                            'is_online': employee.admin.is_online
+                        })
+            except (ValueError, IndexError) as e:
+                print(f"Error parsing employee GPS coordinates: {e}")
+        
+        # Add manager's location if they are online and have GPS data
+        try:
+            # Find manager in the same department who is recently active
+            from datetime import timedelta
+            recent_threshold = timezone.now() - timedelta(minutes=10)
+            
+            managers_in_dept = Manager.objects.filter(
+                admin__employee__department=employee.department,
+                admin__is_online=True,
+                admin__last_seen__gte=recent_threshold  # Only managers active within last 10 minutes
+            ).select_related('admin')
+            
+            for manager in managers_in_dept:
+                try:
+                    if hasattr(manager.admin, 'employee'):
+                        manager_attendance = EmployeeGPSAttendance.objects.filter(
+                            employee=manager.admin.employee,
+                            date=today,
+                            checkin_gps__isnull=False
+                        ).order_by('-checkin_time').first()
+                        
+                        if manager_attendance and manager_attendance.checkin_gps:
+                            coords = manager_attendance.checkin_gps.split(',')
+                            if len(coords) == 2:
+                                lat = float(coords[0].strip())
+                                lng = float(coords[1].strip())
+                                
+                                gps_data.append({
+                                    'user_id': manager.admin.id,
+                                    'name': f"{manager.admin.first_name} {manager.admin.last_name}",
+                                    'role': 'Manager',
+                                    'lat': lat,
+                                    'lng': lng,
+                                    'marker_color': 'yellow',
+                                    'last_seen': manager.admin.last_seen.isoformat() if manager.admin.last_seen else None,
+                                    'checkin_time': manager_attendance.checkin_time.isoformat() if manager_attendance.checkin_time else None,
+                                    'is_online': manager.admin.is_online
+                                })
+                except (ValueError, IndexError) as e:
+                    print(f"Error parsing manager GPS coordinates: {e}")
+                    continue
+        except Exception as e:
+            print(f"Error getting manager GPS data: {e}")
+        
+        return JsonResponse({
+            'success': True,
+            'data': gps_data,
+            'count': len(gps_data)
+        })
+        
+    except Exception as e:
+        print(f"Error in employee_gps_data_api: {e}")
+        return JsonResponse({'error': 'Failed to fetch GPS data'}, status=500)

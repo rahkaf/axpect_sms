@@ -1261,3 +1261,318 @@ def admin_checkout(request):
         messages.error(request, f"Check-out failed: {str(e)}")
     
     return redirect('admin_mark_attendance')
+
+
+def admin_live_gps_map(request):
+    """CEO Live GPS Map - Shows all signed-in users across the company"""
+    if request.user.user_type != '1':  # Only CEO can access
+        messages.error(request, "Access denied. CEO access required.")
+        return redirect('admin_home')
+    
+    context = {
+        'page_title': 'Live GPS Map - Company Wide'
+    }
+    return render(request, 'ceo_template/live_gps_map.html', context)
+
+
+@csrf_exempt
+def admin_gps_data_api(request):
+    """API endpoint for CEO to fetch GPS data of all signed-in users"""
+    if request.user.user_type != '1':  # Only CEO can access
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    try:
+        from datetime import date, timedelta
+        from django.utils import timezone
+        today = date.today()
+        
+        # Get only currently online users with recent activity (within last 10 minutes)
+        from datetime import timedelta
+        recent_threshold = timezone.now() - timedelta(minutes=10)
+        
+        online_users = CustomUser.objects.filter(
+            is_online=True,
+            user_type__in=['1', '2', '3'],  # CEO, Manager, Employee
+            last_seen__gte=recent_threshold  # Only users active within last 10 minutes
+        ).select_related('admin', 'manager', 'employee')
+        
+        gps_data = []
+        
+        for user in online_users:
+            # Get latest GPS attendance for today
+            latest_attendance = None
+            user_name = f"{user.first_name} {user.last_name}"
+            user_role = dict(CustomUser.USER_TYPE)[int(user.user_type)]
+            gps_coords = None
+            checkin_time = None
+            
+            try:
+                # Try to get employee record for any user type
+                employee = None
+                
+                if user.user_type == '3':  # Employee
+                    try:
+                        employee = user.employee
+                    except:
+                        pass
+                elif user.user_type == '2':  # Manager
+                    try:
+                        employee = user.employee
+                    except:
+                        pass
+                elif user.user_type == '1':  # CEO
+                    try:
+                        employee = user.employee
+                    except:
+                        pass
+                
+                # If we found an employee record, get their GPS attendance for TODAY only
+                if employee:
+                    latest_attendance = EmployeeGPSAttendance.objects.filter(
+                        employee=employee,
+                        date=today,
+                        checkin_gps__isnull=False,
+                        checkin_gps__gt=''  # Ensure GPS is not empty
+                    ).order_by('-checkin_time').first()
+                    
+                    if latest_attendance and latest_attendance.checkin_gps.strip():
+                        gps_coords = latest_attendance.checkin_gps.strip()
+                        checkin_time = latest_attendance.checkin_time
+                        
+            except Exception as e:
+                continue
+            
+            if gps_coords:
+                try:
+                    # Parse GPS coordinates (assuming format "lat,lng")
+                    coords = gps_coords.split(',')
+                    if len(coords) == 2:
+                        lat = float(coords[0].strip())
+                        lng = float(coords[1].strip())
+                        
+                        # Determine marker color based on role
+                        if user.user_type == '1':  # CEO
+                            marker_color = 'red'
+                        elif user.user_type == '2':  # Manager
+                            marker_color = 'yellow'
+                        else:  # Employee
+                            marker_color = 'green'
+                        
+                        gps_data.append({
+                            'user_id': user.id,
+                            'name': user_name,
+                            'role': user_role,
+                            'lat': lat,
+                            'lng': lng,
+                            'marker_color': marker_color,
+                            'last_seen': user.last_seen.isoformat() if user.last_seen else None,
+                            'checkin_time': checkin_time.isoformat() if checkin_time else None,
+                            'is_online': user.is_online
+                        })
+                except (ValueError, IndexError) as e:
+                    print(f"Error parsing GPS coordinates for user {user.id}: {e}")
+                    continue
+        
+        return JsonResponse({
+            'success': True,
+            'data': gps_data,
+            'count': len(gps_data)
+        })
+        
+    except Exception as e:
+        print(f"Error in admin_gps_data_api: {e}")
+        return JsonResponse({'error': 'Failed to fetch GPS data'}, status=500)
+
+
+@csrf_exempt
+def admin_gps_routes_api(request):
+    """API endpoint for CEO to fetch GPS route data with role-based filtering"""
+    if request.user.user_type != '1':  # Only CEO can access
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    try:
+        from datetime import date, timedelta
+        from django.utils import timezone
+        from .models import GPSLocationHistory, GPSRoute, Employee
+        
+        # Get date parameter (default to today)
+        date_str = request.GET.get('date', str(date.today()))
+        try:
+            target_date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            target_date = date.today()
+        
+        # Get employee filter (optional)
+        employee_id = request.GET.get('employee_id')
+        
+        routes_data = []
+        
+        # Get all employees or specific employee
+        if employee_id:
+            try:
+                employees = [Employee.objects.get(id=employee_id)]
+            except Employee.DoesNotExist:
+                return JsonResponse({'error': 'Employee not found'}, status=404)
+        else:
+            employees = Employee.objects.all().select_related('admin')
+        
+        for employee in employees:
+            # Get GPS location history for the date
+            gps_history = GPSLocationHistory.objects.filter(
+                employee=employee,
+                date=target_date
+            ).order_by('timestamp')
+            
+            if gps_history.exists():
+                # Build route points
+                route_points = []
+                total_distance = 0
+                time_spent_data = []
+                
+                prev_point = None
+                for point in gps_history:
+                    route_point = {
+                        'lat': float(point.latitude),
+                        'lng': float(point.longitude),
+                        'timestamp': point.timestamp.isoformat(),
+                        'activity_type': point.activity_type,
+                        'time_spent_minutes': point.time_spent_minutes,
+                        'address': point.address
+                    }
+                    route_points.append(route_point)
+                    
+                    # Calculate distance if we have a previous point
+                    if prev_point:
+                        distance = calculate_distance(
+                            float(prev_point.latitude), float(prev_point.longitude),
+                            float(point.latitude), float(point.longitude)
+                        )
+                        total_distance += distance
+                    
+                    # Add time spent data for hover information
+                    if point.time_spent_minutes > 0:
+                        time_spent_data.append({
+                            'lat': float(point.latitude),
+                            'lng': float(point.longitude),
+                            'time_minutes': point.time_spent_minutes,
+                            'activity': point.activity_type,
+                            'timestamp': point.timestamp.isoformat()
+                        })
+                    
+                    prev_point = point
+                
+                # Get or create daily route summary
+                route_summary, created = GPSRoute.objects.get_or_create(
+                    employee=employee,
+                    date=target_date,
+                    defaults={
+                        'total_distance_km': round(total_distance, 2),
+                        'route_points': route_points
+                    }
+                )
+                
+                if not created and len(route_points) > len(route_summary.route_points):
+                    # Update if we have more points
+                    route_summary.route_points = route_points
+                    route_summary.total_distance_km = round(total_distance, 2)
+                    route_summary.save()
+                
+                routes_data.append({
+                    'employee_id': employee.id,
+                    'employee_name': f"{employee.admin.first_name} {employee.admin.last_name}",
+                    'department': employee.department.name if employee.department else 'N/A',
+                    'route_points': route_points,
+                    'total_distance_km': round(total_distance, 2),
+                    'total_points': len(route_points),
+                    'time_spent_data': time_spent_data,
+                    'start_time': gps_history.first().timestamp.isoformat(),
+                    'end_time': gps_history.last().timestamp.isoformat()
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'data': routes_data,
+            'date': date_str,
+            'count': len(routes_data)
+        })
+        
+    except Exception as e:
+        print(f"Error in admin_gps_routes_api: {e}")
+        return JsonResponse({'error': 'Failed to fetch route data'}, status=500)
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate distance between two GPS points using Haversine formula"""
+    import math
+    
+    # Convert latitude and longitude from degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    # Radius of earth in kilometers
+    r = 6371
+    
+    return c * r
+
+
+@csrf_exempt
+def track_gps_location(request):
+    """API endpoint to track GPS location history"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Authentication required'}, status=401)
+    
+    try:
+        import json
+        from django.utils import timezone
+        from .models import GPSLocationHistory, Employee
+        
+        # Get employee record
+        try:
+            if request.user.user_type == '3':  # Employee
+                employee = request.user.employee
+            elif request.user.user_type == '2':  # Manager
+                employee = request.user.manager.admin.employee
+            elif request.user.user_type == '1':  # CEO
+                employee = request.user.admin.employee
+            else:
+                return JsonResponse({'error': 'Invalid user type'}, status=400)
+        except:
+            return JsonResponse({'error': 'Employee record not found'}, status=404)
+        
+        # Parse request data
+        data = json.loads(request.body)
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        accuracy = data.get('accuracy')
+        activity_type = data.get('activity_type', 'traveling')
+        
+        if not latitude or not longitude:
+            return JsonResponse({'error': 'Latitude and longitude required'}, status=400)
+        
+        # Create GPS location record
+        gps_location = GPSLocationHistory.objects.create(
+            employee=employee,
+            latitude=latitude,
+            longitude=longitude,
+            accuracy=accuracy,
+            activity_type=activity_type,
+            timestamp=timezone.now()
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'location_id': gps_location.id,
+            'timestamp': gps_location.timestamp.isoformat()
+        })
+        
+    except Exception as e:
+        print(f"Error in track_gps_location: {e}")
+        return JsonResponse({'error': 'Failed to track location'}, status=500)

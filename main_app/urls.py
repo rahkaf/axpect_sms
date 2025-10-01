@@ -68,6 +68,16 @@ urlpatterns = [
     path("admin/submit/rating/", ceo_views.submit_employee_rating,
          name='submit_employee_rating'),
     
+    # Live GPS Map URLs
+    path("admin/live-gps-map/", ceo_views.admin_live_gps_map,
+         name='admin_live_gps_map'),
+    path("admin/gps-data-api/", ceo_views.admin_gps_data_api,
+         name='admin_gps_data_api'),
+    path("admin/gps-routes-api/", ceo_views.admin_gps_routes_api,
+         name='admin_gps_routes_api'),
+    path("api/track-gps-location/", ceo_views.track_gps_location,
+         name='track_gps_location'),
+    
     # Job Card URLs
     path("admin/job-cards/", jobcard_views.admin_job_card_dashboard,
          name='admin_job_card_dashboard'),
@@ -160,6 +170,12 @@ urlpatterns = [
          name='manager_checkin'),
     path("manager/checkout/", manager_views.manager_checkout,
          name='manager_checkout'),
+    
+    # Manager Live GPS Map URLs
+    path("manager/live-gps-map/", manager_views.manager_live_gps_map,
+         name='manager_live_gps_map'),
+    path("manager/gps-data-api/", manager_views.manager_gps_data_api,
+         name='manager_gps_data_api'),
 
 
 
@@ -189,6 +205,12 @@ urlpatterns = [
     path('employee/orders/new/', employee_views.order_create, name='order_create'),
     path('employee/orders/new/<int:jobcard_id>/', employee_views.order_create, name='order_create_for_jobcard'),
     path('employee/targets/', employee_views.employee_targets, name='employee_targets'),
+    
+    # Employee Live GPS Map URLs
+    path("employee/live-gps-map/", employee_views.employee_live_gps_map,
+         name='employee_live_gps_map'),
+    path("employee/gps-data-api/", employee_views.employee_gps_data_api,
+         name='employee_gps_data_api'),
 
     # Minimal CRM & Jobcards
     path('api/jobcards/create/', views.jobcard_create, name='jobcard_create'),

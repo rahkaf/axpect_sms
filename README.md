@@ -63,6 +63,8 @@ You can access the deployed Axpect Technologies website at [axpect_technologies.
 
 - **Track Employee Attendance:** Monitor employee attendance to ensure a productive workforce.
 
+- **Live GPS Map:** View real-time locations of all signed-in users across the company on an interactive map for enhanced oversight and coordination.
+
 - **Engage with Feedback:** Review and respond to feedback from both employees and managers to foster a collaborative workplace.
 
 - **Manage Leave Requests:** Approve or reject leave requests from Managers and Employees, ensuring operational continuity.
@@ -70,6 +72,8 @@ You can access the deployed Axpect Technologies website at [axpect_technologies.
 ### Manager Can:
 
 - **Maintain Attendance:** Managers can record and update employee attendance, making it easier to track team productivity.
+
+- **Live GPS Map:** View real-time locations of their direct reports and themselves on an interactive map for better team coordination.
 
 - **Handle Salaries:** Add or update salary information for employees, streamlining payroll processes.
 
@@ -81,11 +85,39 @@ You can access the deployed Axpect Technologies website at [axpect_technologies.
 
 - **Check Attendance:** Employees can view their attendance records to stay on top of their work hours.
 
+- **Live GPS Map:** View their own location and their manager's location on an interactive map for transparency and coordination.
+
 - **Access Salary Information:** Check salary details for transparency and financial planning.
 
 - **Request Leave:** Submit leave requests to the CEO, ensuring seamless time-off management.
 
 - **Connect with CEO:** Employees can provide feedback and share important concerns with the CEO, fostering a culture of open communication.
+
+## Live GPS Map Feature
+
+🗺️ **NEW: Real-Time Location Tracking**
+
+The Live GPS Map feature provides real-time visibility of staff locations across the organization:
+
+### Key Features:
+- **Interactive Map:** Built with Leaflet.js and OpenStreetMap (no API key required)
+- **Role-Based Visibility:** 
+  - CEOs see all signed-in users company-wide
+  - Managers see their direct reports plus themselves
+  - Employees see only themselves and their manager
+- **Color-Coded Markers:**
+  - 🔴 Red: CEO
+  - 🟡 Yellow: Manager
+  - 🟢 Green: Employee
+- **Real-Time Updates:** Map refreshes every 30 seconds automatically
+- **Detailed Information:** Click markers to see check-in time and last seen timestamp
+- **Mobile Responsive:** Works seamlessly on desktop and mobile devices
+
+### Security & Privacy:
+- Only authenticated users can access the map
+- GPS data is filtered based on user roles and permissions
+- Users must be signed in and have GPS attendance data to appear on the map
+- Coordinates are validated to prevent invalid markers
 
 ## Screenshots
 

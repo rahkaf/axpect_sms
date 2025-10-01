@@ -1,6 +1,7 @@
 from django.utils.deprecation import MiddlewareMixin
 from django.urls import reverse
 from django.shortcuts import redirect
+from django.utils import timezone
 
 
 class LoginCheckMiddleWare(MiddlewareMixin):
@@ -8,6 +9,10 @@ class LoginCheckMiddleWare(MiddlewareMixin):
         modulename = view_func.__module__
         user = request.user # Who is the current user ?
         if user.is_authenticated:
+            # Update user online status and last seen timestamp
+            user.is_online = True
+            user.last_seen = timezone.now()
+            user.save(update_fields=['is_online', 'last_seen'])
             if user.user_type == '1': # Is it the CEO/Admin
                 if modulename == 'main_app.employee_views':
                     return redirect(reverse('admin_home'))

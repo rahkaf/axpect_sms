@@ -68,6 +68,10 @@ def doLogin(request, **kwargs):
 
 def logout_user(request):
     if request.user != None:
+        # Set user offline before logout
+        if hasattr(request.user, 'is_online'):
+            request.user.is_online = False
+            request.user.save(update_fields=['is_online'])
         logout(request)
     return redirect("/")
 

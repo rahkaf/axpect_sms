@@ -587,3 +587,111 @@ def manager_checkout(request):
         messages.error(request, f"Check-out failed: {str(e)}")
     
     return redirect('manager_mark_attendance')
+
+
+def manager_live_gps_map(request):
+    """Manager Live GPS Map - Shows their direct reports and themselves"""
+    if request.user.user_type != '2':  # Only Manager can access
+        messages.error(request, "Access denied. Manager access required.")
+        return redirect('manager_home')
+    
+    context = {
+        'page_title': 'Live GPS Map - My Team'
+    }
+    return render(request, 'manager_template/live_gps_map.html', context)
+
+
+@csrf_exempt
+def manager_gps_data_api(request):
+    """API endpoint for Manager to fetch GPS data of their team"""
+    if request.user.user_type != '2':  # Only Manager can access
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    try:
+        from datetime import date
+        today = date.today()
+        
+        # Get manager's department
+        manager = Manager.objects.get(admin=request.user)
+        manager_department = manager.admin.employee.department if hasattr(manager.admin, 'employee') else None
+        
+        gps_data = []
+        
+        # Add manager's own location if they have GPS attendance
+        try:
+            if hasattr(manager.admin, 'employee'):
+                manager_attendance = EmployeeGPSAttendance.objects.filter(
+                    employee=manager.admin.employee,
+                    date=today,
+                    checkin_gps__isnull=False
+                ).order_by('-checkin_time').first()
+                
+                if manager_attendance and manager_attendance.checkin_gps:
+                    coords = manager_attendance.checkin_gps.split(',')
+                    if len(coords) == 2:
+                        lat = float(coords[0].strip())
+                        lng = float(coords[1].strip())
+                        
+                        gps_data.append({
+                            'user_id': manager.admin.id,
+                            'name': f"{manager.admin.first_name} {manager.admin.last_name}",
+                            'role': 'Manager',
+                            'lat': lat,
+                            'lng': lng,
+                            'marker_color': 'yellow',
+                            'last_seen': manager.admin.last_seen.isoformat() if manager.admin.last_seen else None,
+                            'checkin_time': manager_attendance.checkin_time.isoformat() if manager_attendance.checkin_time else None,
+                            'is_online': manager.admin.is_online
+                        })
+        except Exception as e:
+            print(f"Error getting manager GPS data: {e}")
+        
+        # Get employees in manager's department who are online and recently active
+        if manager_department:
+            from datetime import timedelta
+            recent_threshold = timezone.now() - timedelta(minutes=10)
+            
+            employees = Employee.objects.filter(
+                department=manager_department,
+                admin__is_online=True,
+                admin__last_seen__gte=recent_threshold  # Only users active within last 10 minutes
+            ).select_related('admin')
+            
+            for employee in employees:
+                try:
+                    latest_attendance = EmployeeGPSAttendance.objects.filter(
+                        employee=employee,
+                        date=today,
+                        checkin_gps__isnull=False
+                    ).order_by('-checkin_time').first()
+                    
+                    if latest_attendance and latest_attendance.checkin_gps:
+                        coords = latest_attendance.checkin_gps.split(',')
+                        if len(coords) == 2:
+                            lat = float(coords[0].strip())
+                            lng = float(coords[1].strip())
+                            
+                            gps_data.append({
+                                'user_id': employee.admin.id,
+                                'name': f"{employee.admin.first_name} {employee.admin.last_name}",
+                                'role': 'Employee',
+                                'lat': lat,
+                                'lng': lng,
+                                'marker_color': 'green',
+                                'last_seen': employee.admin.last_seen.isoformat() if employee.admin.last_seen else None,
+                                'checkin_time': latest_attendance.checkin_time.isoformat() if latest_attendance.checkin_time else None,
+                                'is_online': employee.admin.is_online
+                            })
+                except (ValueError, IndexError) as e:
+                    print(f"Error parsing GPS coordinates for employee {employee.id}: {e}")
+                    continue
+        
+        return JsonResponse({
+            'success': True,
+            'data': gps_data,
+            'count': len(gps_data)
+        })
+        
+    except Exception as e:
+        print(f"Error in manager_gps_data_api: {e}")
+        return JsonResponse({'error': 'Failed to fetch GPS data'}, status=500)

@@ -157,6 +157,14 @@
                 </li>
 
                 <li class="nav-item">
+                    {% url 'admin_live_gps_map' as admin_live_gps_map %}
+                    <a href="{{admin_live_gps_map}}" class="nav-link {% if admin_live_gps_map == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marked-alt"></i>
+                        <p>Live GPS Map</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     {% url 'admin_mark_attendance' as admin_mark_attendance %}
                     <a href="{{admin_mark_attendance}}" class="nav-link {% if admin_mark_attendance == request.path %}active{% endif %}">
                         <i class="nav-icon fas fa-user-check"></i>
@@ -326,6 +334,14 @@
                 </li>
 
                 <li class="nav-item">
+                    {% url 'manager_live_gps_map' as manager_live_gps_map %}
+                    <a href="{{manager_live_gps_map}}" class="nav-link {% if manager_live_gps_map == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marked-alt"></i>
+                        <p>Live GPS Map</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     {% url 'manager_update_attendance' as manager_update_attendance %}
                     <a href="{{manager_update_attendance}}" class="nav-link {% if manager_update_attendance == request.path %}active{% endif %}">
                         <i class="nav-icon fas fa-edit"></i>
@@ -465,6 +481,14 @@
                     <a href="{{employee_gps_attendance}}" class="nav-link {% if employee_gps_attendance == request.path %}active{% endif %}">
                         <i class="nav-icon fas fa-map-marker-alt"></i>
                         <p>GPS Attendance</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'employee_live_gps_map' as employee_live_gps_map %}
+                    <a href="{{employee_live_gps_map}}" class="nav-link {% if employee_live_gps_map == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marked-alt"></i>
+                        <p>Live GPS Map</p>
                     </a>
                 </li>
 
