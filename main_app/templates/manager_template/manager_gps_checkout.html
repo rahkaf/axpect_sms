@@ -1,0 +1,428 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .manager-checkout-card {
+        max-width: 700px;
+        margin: 0 auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        background: white;
+    }
+    
+    .manager-checkout-header {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+    
+    .manager-checkout-body {
+        padding: 30px;
+    }
+    
+    .session-info-card {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .supervision-summary-card {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #ff6b6b;
+        box-shadow: 0 0 0 0.2rem rgba(255, 107, 107, 0.25);
+    }
+    
+    .btn-manager-checkout {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        border: none;
+        color: white;
+        padding: 15px 30px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 8px;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-manager-checkout:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+    }
+    
+    .btn-manager-checkout:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .time-display {
+        font-size: 1.2em;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .duration-badge {
+        background: #28a745;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .success-message {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        display: none;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="manager-checkout-card">
+                <!-- Header -->
+                <div class="manager-checkout-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-sign-out-alt me-2"></i>
+                        Manager Check-Out
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        {{ manager.admin.first_name }}, please complete your supervision session
+                    </p>
+                </div>
+                
+                <!-- Body -->
+                <div class="manager-checkout-body">
+                    <!-- Success/Error Messages -->
+                    <div id="success-message" class="success-message">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span>Successfully checked out! Supervision session completed.</span>
+                    </div>
+                    
+                    <div id="error-message" class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="error-text">Error occurred during check-out</span>
+                    </div>
+                    
+                    <!-- Current Session Info -->
+                    <div class="session-info-card">
+                        <h6 class="mb-3">
+                            <i class="fas fa-clock me-2 text-primary"></i>
+                            Current Supervision Session
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Check-in Time:</strong><br>
+                                    <span class="time-display text-success">
+                                        {{ active_checkin.check_in_time|date:"F d, Y g:i A" }}
+                                    </span>
+                                </div>
+                                <div class="mb-3">
+                                    <strong>Check-in Location:</strong><br>
+                                    <small class="text-muted">{{ active_checkin.check_in_address|default:"Location not available" }}</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <strong>Session Duration:</strong><br>
+                                    <span id="session-duration" class="duration-badge">
+                                        <i class="fas fa-hourglass-half me-1"></i>
+                                        Calculating...
+                                    </span>
+                                </div>
+                                <div class="mb-3">
+                                    <strong>Division:</strong><br>
+                                    <span class="text-info">{{ manager.division.name }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if active_checkin.work_summary %}
+                            <div class="supervision-summary-card">
+                                <h6 class="mb-2">
+                                    <i class="fas fa-tasks me-2"></i>
+                                    Today's Supervision Plan
+                                </h6>
+                                <p class="mb-0">{{ active_checkin.work_summary }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Checkout Form -->
+                    <form id="checkout-form">
+                        {% csrf_token %}
+                        
+                        <!-- Work Summary Update -->
+                        <div class="form-group">
+                            <label for="work-summary" class="form-label">
+                                <i class="fas fa-clipboard-check me-2"></i>
+                                Supervision Summary & Accomplishments
+                            </label>
+                            <textarea id="work-summary" class="form-control" rows="4" 
+                                    placeholder="Summarize your supervision activities today (e.g., team meetings conducted, issues resolved, performance reviews, site inspections)...">{{ active_checkin.work_summary }}</textarea>
+                            <small class="text-muted">Update or add details about your supervision work completed today.</small>
+                        </div>
+                        
+                        <!-- Team Status -->
+                        <div class="form-group">
+                            <label for="team-status" class="form-label">
+                                <i class="fas fa-users me-2"></i>
+                                Team Status Update (Optional)
+                            </label>
+                            <textarea id="team-status" class="form-control" rows="3" 
+                                    placeholder="Brief update on team status, any issues to follow up, or notes for next supervision session..."></textarea>
+                            <small class="text-muted">This information will be available for future reference and handovers.</small>
+                        </div>
+                        
+                        <!-- Current Location for Checkout -->
+                        <div class="session-info-card">
+                            <h6 class="mb-3">
+                                <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                                Checkout Location
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong>Latitude:</strong>
+                                        <span id="latitude-display" class="text-muted">Getting location...</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <strong>Longitude:</strong>
+                                        <span id="longitude-display" class="text-muted">Getting location...</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong>Status:</strong>
+                                        <span id="location-status">
+                                            <i class="fas fa-spinner fa-spin me-1"></i>
+                                            Getting location...
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <strong>Address:</strong>
+                                <div id="address-display" class="text-muted">Loading checkout address...</div>
+                            </div>
+                            
+                            <button type="button" onclick="updateLocation()" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-sync-alt me-1"></i>Update Location
+                            </button>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <button type="button" id="checkout-btn" onclick="performManagerCheckout()" class="btn-manager-checkout" disabled>
+                                    <i class="fas fa-sign-out-alt me-2"></i>
+                                    Complete Check-Out
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="{% url 'manager_gps_attendance' %}" class="btn btn-outline-secondary w-100" 
+                                   style="padding: 15px 30px; font-size: 16px; font-weight: 600; border-radius: 8px;">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form data -->
+<input type="hidden" id="latitude-input" name="latitude">
+<input type="hidden" id="longitude-input" name="longitude">
+<input type="hidden" id="accuracy-input" name="accuracy">
+
+<script>
+let currentLocation = null;
+let checkinTime = new Date('{{ active_checkin.check_in_time|date:"c" }}');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateLocation();
+    updateSessionDuration();
+    
+    // Update duration every minute
+    setInterval(updateSessionDuration, 60000);
+});
+
+function updateSessionDuration() {
+    const now = new Date();
+    const diffMs = now - checkinTime;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    const durationElement = document.getElementById('session-duration');
+    durationElement.innerHTML = `<i class="fas fa-hourglass-half me-1"></i>${diffHours}h ${diffMinutes}m`;
+}
+
+function updateLocation() {
+    const statusElement = document.getElementById('location-status');
+    const latitudeElement = document.getElementById('latitude-display');
+    const longitudeElement = document.getElementById('longitude-display');
+    const addressElement = document.getElementById('address-display');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    statusElement.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getting location...';
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                currentLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+                
+                latitudeElement.textContent = currentLocation.latitude.toFixed(6);
+                longitudeElement.textContent = currentLocation.longitude.toFixed(6);
+                addressElement.textContent = 'Manager checkout location obtained';
+                
+                statusElement.innerHTML = '<i class="fas fa-check-circle me-1 text-success"></i>Location ready';
+                
+                checkoutBtn.disabled = false;
+                
+                // Update form inputs
+                document.getElementById('latitude-input').value = currentLocation.latitude;
+                document.getElementById('longitude-input').value = currentLocation.longitude;
+                document.getElementById('accuracy-input').value = currentLocation.accuracy;
+            },
+            function(error) {
+                console.error('Error getting location:', error);
+                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle me-1 text-warning"></i>Location unavailable';
+                latitudeElement.textContent = 'Error';
+                longitudeElement.textContent = 'Error';
+                addressElement.textContent = 'Location unavailable - checkout will proceed without GPS';
+                
+                // Allow checkout even without location
+                checkoutBtn.disabled = false;
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 30000
+            }
+        );
+    } else {
+        statusElement.innerHTML = '<i class="fas fa-times me-1 text-danger"></i>Geolocation not supported';
+        checkoutBtn.disabled = false; // Allow checkout anyway
+    }
+}
+
+function performManagerCheckout() {
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const successMessage = document.getElementById('success-message');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+    
+    // Disable button and show loading
+    checkoutBtn.disabled = true;
+    checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking Out...';
+    
+    // Prepare form data
+    const formData = new FormData();
+    if (currentLocation) {
+        formData.append('latitude', currentLocation.latitude);
+        formData.append('longitude', currentLocation.longitude);
+        formData.append('accuracy', currentLocation.accuracy);
+    }
+    formData.append('work_summary', document.getElementById('work-summary').value);
+    formData.append('team_status', document.getElementById('team-status').value);
+    
+    // Send request
+    fetch('{% url "api_gps_checkout" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            successMessage.style.display = 'block';
+            // Send team notification about manager checkout
+            sendTeamCheckoutNotification();
+            setTimeout(() => {
+                window.location.href = '{% url "manager_gps_attendance" %}';
+            }, 2000);
+        } else {
+            errorText.textContent = data.error || 'Unknown error occurred';
+            errorMessage.style.display = 'block';
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>Try Again';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        errorText.textContent = 'Network error. Please try again.';
+        errorMessage.style.display = 'block';
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>Try Again';
+    });
+}
+
+function sendTeamCheckoutNotification() {
+    // This would send a notification to the manager's team about checkout
+    console.log('Sending team notification: Manager {{ manager.admin.first_name }} has completed supervision for today');
+}
+</script>
+{% endblock %}

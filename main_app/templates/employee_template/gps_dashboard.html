@@ -1,0 +1,394 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .gps-card {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        background: white;
+    }
+    
+    .gps-card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-checked-in {
+        background-color: #28a745;
+    }
+    
+    .status-checked-out {
+        background-color: #dc3545;
+    }
+    
+    .status-working {
+        background-color: #17a2b8;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+    
+    .badge-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .badge-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+    }
+    
+    .metric-value {
+        font-size: 2em;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .recent-track-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .track-time {
+        font-size: 0.9em;
+        color: #666;
+    }
+    
+    .action-btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 600;
+        text: transform: uppercase;
+        letter-spacing: 0.5px;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-checkin {
+        background: linear-gradient(135deg, #56ab2f 0%, #128833 100%);
+        color: white;
+    }
+    
+    .btn-checkout {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        color: white;
+    }
+    
+    .btn-secondary-action {
+        background: #f8f9fa;
+        color: #495057;
+        border: 1px solid #dee2e6;
+    }
+    
+    .btn-checkin:hover, .btn-checkout:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .location-info {
+        background: #f8f9fa;
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+    
+    .work-summary-card {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .summary-label {
+        font-weight: 600;
+        color: #856404;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="gps-card">
+                <div class="gps-card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-0">
+                                <i class="fas fa-location-dot me-2"></i>
+                                GPS Tracking Dashboard
+                            </h4>
+                            <p class="mb-0 mt-1 opacity-75">
+                                Welcome back, {{ employee.admin.first_name }}! Track your location and manage attendance.
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if today_checkin %}
+                                {% if is_checked_out %}
+                                    <span class="status-indicator status-checked-out"></span>
+                                    <span class="status-badge badge-warning">Checked Out</span>
+                                {% else %}
+                                    <span class="status-indicator status-checked-in"></span>
+                                    <span class="status-badge badge-success">Checked In</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="status-indicator status-checked-out"></span>
+                                <span class="status-badge badge-danger">Not Checked In</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="gps-card">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-tools me-2 text-primary"></i>
+                        Quick Actions
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            {% if not today_checkin %}
+                                <a href="{% url 'employee_gps_checkin' %}" class="btn btn-checkin action-btn w-100">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Check In
+                                </a>
+                            {% elif today_checkin and not is_checked_out %}
+                                <a href="{% url 'employee_gps_checkout' %}" class="btn btn-checkout action-btn w-100">
+                                    <i class="fas fa-sign-out-alt me-2"></i>
+                                    Check Out
+                                </a>
+                            {% else %}
+                                <a href="{% url 'employee_gps_checkin' %}" class="btn btn-checkin action-btn w-100">
+                                    <i class="fas fa-sign-in-alt me-2"></i>
+                                    Check In
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{% url 'employee_gps_history' %}" class="btn btn-secondary-action action-btn w-100">
+                                <i class="fas fa-history me-2"></i>
+                                History
+                            </a>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <a href="{% url 'employee_live_location' %}" class="btn btn-secondary-action action-btn w-100">
+                                <i class="fas fa-map-marker-alt me-2"></i>
+                                Live Location
+                            </a>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <button onclick="refreshLocation()" class="btn btn-secondary-action action-btn w-100">
+                                <i class="fas fa-sync-alt me-2"></i>
+                                Refresh GPS
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Status Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="gps-card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-calendar-day me-2 text-primary"></i>
+                        Today's Status
+                    </h5>
+                    
+                    {% if today_checkin %}
+                        <!-- Work Summary Card -->
+                        {% if today_checkin.work_summary %}
+                            <div class="work-summary-card">
+                                <div class="summary-label">
+                                    <i class="fas fa-tasks me-1"></i>
+                                    Today's Work Summary
+                                </div>
+                                <p class="mb-0">{{ today_checkin.work_summary }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Current Session Info -->
+                        <div class="location-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong><i class="fas fa-clock me-1"></i>Check-in Time:</strong><br>
+                                    <span class="text-success">{{ today_checkin.check_in_time|date:"F d, Y g:i A" }}</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong><i class="fas fa-map-marker-alt me-1"></i>Check-in Location:</strong><br>
+                                    <small class="text-muted">{{ today_checkin.check_in_address|default:"Location not available" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Time Tracking -->
+                        {% if today_checkin.duration_hours %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-hourglass-half me-2"></i>
+                                <strong>Work Duration:</strong> {{ today_checkin.duration_hours }} hours
+                            </div>
+                        {% endif %}
+                        
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle me-2"></i>
+                            You haven't checked in today. Use the "Check In" button above to start tracking your work day.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Weekly Stats -->
+            <div class="gps-card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i>
+                        This Week
+                    </h5>
+                    
+                    <div class="metric-card">
+                        <div class="metric-value text-primary">{{ total_hours_week|floatformat:1 }}</div>
+                        <div class="metric-label">Total Hours</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-value text-success">{{ week_checkins.count }}</div>
+                        <div class="metric-label">Check-ins</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-value text-info">
+                            {% if week_checkins.count > 0 %}
+                                {% widthratio week_checkins.count 5 20 %}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </div>
+                        <div class="metric-label">Daily Average</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="gps-card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Recent Activity
+                    </h5>
+                    
+                    {% if recent_tracks %}
+                        {% for track in recent_tracks %}
+                            <div class="recent-track-item">
+                                <div class="d-flex align-items-center">
+                                    <span class="status-indicator status-{{ track.status|lower|slice:':4' }}"></span>
+                                    <div>
+                                        <strong>{{ track.get_status_display }}</strong><br>
+                                        <small class="text-muted">{{ track.address|default:"Location data unavailable" }}</small>
+                                    </div>
+                                </div>
+                                <div class="track-time">
+                                    {{ track.timestamp|date:"g:i A" }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-map-marker-alt fa-2x mb-3"></i>
+                            <p>No recent GPS activity found</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Div for GPS Location -->
+<div id="location-data" data-employee-id="{{ employee.id }}"></div>
+
+<script>
+function refreshLocation() {
+    // This would typically send a request to the GPS API endpoint
+    // For demo purposes, we'll just show a notification
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            console.log('Current location:', position.coords.latitude, position.coords.longitude);
+            // Here you would send the location to your backend
+        });
+    } else {
+        alert('Geolocation is not supported by this browser.');
+    }
+}
+
+// Auto-refresh every 30 seconds if user is checked in
+{% if today_checkin %}
+setInterval(function() {
+    refreshLocation();
+}, 30000);
+{% endif %}
+</script>
+{% endblock %}

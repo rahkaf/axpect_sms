@@ -17,7 +17,7 @@ from django.urls import path
 
 from main_app.EditSalaryView import EditSalaryView
 
-from . import ceo_views, manager_views, employee_views, views, jobcard_views
+from . import ceo_views, manager_views, employee_views, views, jobcard_views, gps_views
 
 urlpatterns = [
     path("", views.login_page, name='login_page'),
@@ -26,7 +26,6 @@ urlpatterns = [
     path("doLogin/", views.doLogin, name='user_login'),
     path("logout_user/", views.logout_user, name='user_logout'),
     path("admin/home/", ceo_views.admin_home, name='admin_home'),
-    path("admin/export/daily-scores.csv", ceo_views.export_daily_scores_csv, name='export_daily_scores_csv'),
     path("manager/add", ceo_views.add_manager, name='add_manager'),
     path("division/add", ceo_views.add_division, name='add_division'),
     path("send_employee_notification/", ceo_views.send_employee_notification,
@@ -52,31 +51,12 @@ urlpatterns = [
          name="admin_view_attendance",),
     path("attendance/fetch/", ceo_views.get_admin_attendance,
          name='get_admin_attendance'),
-    path("admin/gps/attendance/", ceo_views.admin_gps_attendance_dashboard,
-         name='admin_gps_attendance_dashboard'),
-    path("admin/mark/attendance/", ceo_views.admin_mark_attendance,
-         name='admin_mark_attendance'),
-    path("admin/checkin/", ceo_views.admin_checkin,
-         name='admin_checkin'),
-    path("admin/checkout/", ceo_views.admin_checkout,
-         name='admin_checkout'),
     
     # Test URLs
     path("test-attendance/", views.test_attendance_page, name='test_attendance_page'),
     path("test-ajax/", views.test_ajax, name='test_ajax'),
-    path("test-manager-checkin/", views.test_manager_checkin, name='test_manager_checkin'),
-    path("admin/submit/rating/", ceo_views.submit_employee_rating,
-         name='submit_employee_rating'),
     
-    # Live GPS Map URLs
-    path("admin/live-gps-map/", ceo_views.admin_live_gps_map,
-         name='admin_live_gps_map'),
-    path("admin/gps-data-api/", ceo_views.admin_gps_data_api,
-         name='admin_gps_data_api'),
-    path("admin/gps-routes-api/", ceo_views.admin_gps_routes_api,
-         name='admin_gps_routes_api'),
-    path("api/track-gps-location/", ceo_views.track_gps_location,
-         name='track_gps_location'),
+    
     
     # Job Card URLs
     path("admin/job-cards/", jobcard_views.admin_job_card_dashboard,
@@ -162,33 +142,52 @@ urlpatterns = [
          name='edit_employee_salary'),
     path('manager/salary/fetch/', manager_views.fetch_employee_salary,
          name='fetch_employee_salary'),
-    path("manager/gps/attendance/", manager_views.manager_gps_attendance_dashboard,
-         name='manager_gps_attendance_dashboard'),
-    path("manager/mark/attendance/", manager_views.manager_mark_attendance,
-         name='manager_mark_attendance'),
-    path("manager/checkin/", manager_views.manager_checkin,
-         name='manager_checkin'),
-    path("manager/checkout/", manager_views.manager_checkout,
-         name='manager_checkout'),
     
-    # Manager Live GPS Map URLs
-    path("manager/live-gps-map/", manager_views.manager_live_gps_map,
-         name='manager_live_gps_map'),
-    path("manager/gps-data-api/", manager_views.manager_gps_data_api,
-         name='manager_gps_data_api'),
+    # Manager GPS Attendance
+    path('manager/gps/attendance/', manager_views.manager_gps_attendance, name='manager_gps_attendance'),
+    path('manager/gps/checkin/', manager_views.manager_gps_checkin, name='manager_gps_checkin'),
+    path('manager/gps/checkout/', manager_views.manager_gps_checkout, name='manager_gps_checkout'),
+    path('manager/gps/history/', manager_views.manager_gps_history, name='manager_gps_history'),
+    
+    
 
 
+
+    # Employee GPS Views
+    path("employee/gps/dashboard/", gps_views.employee_gps_dashboard, name='employee_gps_dashboard'),
+    path("employee/gps/checkin/", gps_views.employee_gps_checkin, name='employee_gps_checkin'),
+    path("employee/gps/checkout/", gps_views.employee_gps_checkout, name='employee_gps_checkout'),
+    path("employee/gps/history/", gps_views.employee_gps_history, name='employee_gps_history'),
+    path("employee/live-location/", gps_views.employee_live_location, name='employee_live_location'),
+    
+    # Manager GPS Views
+    path("manager/gps/dashboard/", gps_views.manager_gps_dashboard, name='manager_gps_dashboard'),
+    path("manager/employee-locations/", gps_views.manager_employee_locations, name='manager_employee_locations'),
+    path("manager/attendance-reports/", gps_views.manager_attendance_reports, name='manager_attendance_reports'),
+    path("manager/gps/employee/<int:employee_id>/", gps_views.manager_employee_details, name='manager_employee_details'),
+    
+    # CEO GPS Views  
+    path("admin/gps/dashboard/", gps_views.admin_gps_dashboard, name='admin_gps_dashboard'),
+    path("admin/gps/details/<int:employee_id>/", gps_views.admin_gps_employee_details, name='admin_gps_employee_details'),
+    path("admin/location-analytics/", gps_views.admin_location_analytics, name='admin_location_analytics'),
+    path("admin/geofence-management/", gps_views.admin_geofence_management, name='admin_geofence_management'),
+    
+    # GPS API Endpoints
+    path('api/gps/checkin/', gps_views.api_gps_checkin, name='api_gps_checkin'),
+    path('api/gps/checkout/', gps_views.api_gps_checkout, name='api_gps_checkout'),
+    path('api/gps/location-update/', gps_views.api_gps_location_update, name='api_gps_location_update'),
+    path('api/employee-current-location/', gps_views.api_employee_current_location, name='api_employee_current_location'),
+    path('api/department/<int:department_id>/details/', gps_views.api_department_details, name='api_department_details'),
+    
+    # Real-Time GPS API Endpoints
+    path('api/team-locations/', gps_views.api_team_locations, name='api_team_locations'),
+    path('api/employee-route-history/', gps_views.api_employee_route_history, name='api_employee_route_history'),
+    path('api/geofence-status/', gps_views.api_geofence_status, name='api_geofence_status'),
 
     # Employee
     path("employee/home/", employee_views.employee_home, name='employee_home'),
     path("employee/view/attendance/", employee_views.employee_view_attendance,
          name='employee_view_attendance'),
-    path("employee/gps/attendance/", employee_views.employee_gps_attendance,
-         name='employee_gps_attendance'),
-    path("employee/simple/checkin/", employee_views.simple_checkin,
-         name='simple_checkin'),
-    path("employee/simple/checkout/", employee_views.simple_checkout,
-         name='simple_checkout'),
     path("employee/apply/leave/", employee_views.employee_apply_leave,
          name='employee_apply_leave'),
     path("employee/feedback/", employee_views.employee_feedback,
@@ -206,11 +205,7 @@ urlpatterns = [
     path('employee/orders/new/<int:jobcard_id>/', employee_views.order_create, name='order_create_for_jobcard'),
     path('employee/targets/', employee_views.employee_targets, name='employee_targets'),
     
-    # Employee Live GPS Map URLs
-    path("employee/live-gps-map/", employee_views.employee_live_gps_map,
-         name='employee_live_gps_map'),
-    path("employee/gps-data-api/", employee_views.employee_gps_data_api,
-         name='employee_gps_data_api'),
+    
 
     # Minimal CRM & Jobcards
     path('api/jobcards/create/', views.jobcard_create, name='jobcard_create'),
@@ -219,12 +214,6 @@ urlpatterns = [
     path('api/customers/', views.customers_list, name='customers_list'),
     path('api/customers/create/', views.customers_create, name='customers_create'),
     path('api/nlp/parse-followup/', views.nlp_parse_and_followup, name='nlp_parse_and_followup'),
-    path('api/attendance/checkin/', views.attendance_checkin, name='attendance_checkin'),
-    path('api/attendance/checkout/', views.attendance_checkout, name='attendance_checkout'),
-    path('api/attendance/status/', views.get_attendance_status, name='get_attendance_status'),
-    path('api/scoring/leaderboard/today/', views.scoring_leaderboard_today, name='scoring_leaderboard_today'),
-    path('api/scoring/summary/', views.scoring_summary, name='scoring_summary'),
-    path('api/targets/my/', views.my_targets, name='my_targets'),
     path('api/comm/create/', views.comm_create, name='comm_create'),
     path('api/comm/list/', views.comm_list, name='comm_list'),
     path('api/cadence/generate/', views.cadence_generate, name='cadence_generate'),

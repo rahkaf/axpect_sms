@@ -1,0 +1,1306 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .gps-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .gps-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .overview-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .summary-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 25px;
+        color: white;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 20px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .stat-value {
+        font-size: 2.5em;
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: white;
+    }
+    
+    .stat-label {
+        color: rgba(255,255,255,0.9);
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .department-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #17a2b8;
+        transition: transform 0.2s ease;
+    }
+    
+    .department-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .department-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+    }
+    
+    .org-map {
+        background: #f8f9fa;
+        border-radius: 8px;
+        height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    
+    .no-data-message {
+        text-align: center;
+        padding: 60px;
+        color: #666;
+    }
+    
+    .no-data-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    
+    .activity-feed {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .activity-item {
+        background: white;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-left: 3px solid #007bff;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="gps-card">
+                <div class="gps-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-map-signs me-2"></i>
+                        Personnel Location Management
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        Monitor real-time GPS tracking and attendance across the organization.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="summary-stats">
+                <h4 class="mb-4 text-white">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Workforce Overview
+                </h4>
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ total_employees }}</div>
+                            <div class="stat-label">Total Personnel</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ checked_in_today }}</div>
+                            <div class="stat-label">Currently Active</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ active_sessions_count }}</div>
+                            <div class="stat-label">Active Sessions</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-item">
+                            <div class="stat-value">
+                                {% if total_employees > 0 and checked_in_today %}
+                                    {% widthratio checked_in_today total_employees 100 %}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </div>
+                            <div class="stat-label">Participation Rate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Organization Map -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="org-map">
+                <!-- Interactive Map Container -->
+                <div id="mapContainer" 
+                     style="width: 100%; height: 400px; border-radius: 8px; position: relative;"
+                     data-map-data="{{ map_data|escapejs }}">
+                    <!-- Map will be rendered here by JavaScript -->
+                    <div id="mapPlaceholder" class="text-center" style="padding: 100px 20px;">
+                        <i class="fas fa-map fa-3x mb-3 text-primary"></i>
+                        <h5>Loading Organization Activity Map...</h5>
+                        <p class="mb-0">Real-time personnel distribution across locations</p>
+                        <div class="spinner-border text-primary mt-3" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Performance -->
+    <div class="row">
+        <div class="col-md-7">
+            <h5 class="mb-3">
+                <i class="fas fa-building me-2 text-primary"></i>
+                Department Participation
+            </h5>
+            
+            {% if department_stats %}
+                {% for dept in department_stats %}
+                    <div class="department-card">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <div class="department-name">
+                                    {{ dept.department.name|default:"Development" }}
+                                </div>
+                                <small class="text-muted">{{ dept.employee_count }} total employees</small>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-success">{{ dept.checked_in_count|default:"0" }}</strong><br>
+                                <small class="text-muted">Active Today</small>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-info">
+                                    {% if dept.employee_count > 0 and dept.checked_in_count %}
+                                        {% widthratio dept.checked_in_count dept.employee_count 100 %}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </strong><br>
+                                <small class="text-muted">Participation</small>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <button class="btn btn-outline-primary btn-sm" 
+                                        data-dept-id="{{ dept.department.id|default:'1' }}" 
+                                        data-dept-name="{{ dept.department.name|default:'Development' }}" 
+                                        onclick="showDepartmentDetails(this.dataset.deptId, this.dataset.deptName)">
+                                    <i class="fas fa-eye me-1"></i>
+                                    Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data-message">
+                    <div class="no-data-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h4>No Department Data</h4>
+                    <p class="mb-4">No departments found in the system.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Recent Activity Feed -->
+        <div class="col-md-5">
+            <h5 class="mb-3">
+                <i class="fas fa-clock me-2 text-primary"></i>
+                Recent Activity
+            </h5>
+            
+            <div class="activity-feed">
+                {% if recent_activity %}
+                    {% for activity in recent_activity|slice:":10" %}
+                        <div class="activity-item mb-3 p-3 border-start border-3 {% if activity.type == 'checkin' %}border-success bg-light{% else %}border-danger bg-light{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ activity.employee.admin.first_name }} {{ activity.employee.admin.last_name }}</strong>
+                                    <br>
+                                    <span class="{% if activity.type == 'checkin' %}text-success{% else %}text-danger{% endif %}">
+                                        <i class="fas fa-{% if activity.type == 'checkin' %}sign-in-alt{% else %}sign-out-alt{% endif %} me-1"></i>
+                                        {% if activity.type == 'checkin' %}Checked In{% else %}Checked Out{% endif %}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ activity.location|truncatechars:30 }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted">{{ activity.time|date:"g:i A" }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ activity.time|date:"M d" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    
+                    <div class="text-center mt-3">
+                        <a href="{% url 'admin_location_analytics' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-chart-line me-2"></i>View All Activity
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="no-data-message text-center py-4">
+                        <div class="no-data-icon mb-3">
+                            <i class="fas fa-history fa-3x text-muted"></i>
+                        </div>
+                        <h6 class="text-muted">No Recent Activity</h6>
+                        <p class="mb-3 text-muted">No GPS check-ins or check-outs recorded today</p>
+                        <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+                            <i class="fas fa-refresh me-2"></i>Refresh Data
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Current Sessions Overview -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h5 class="mb-3">
+                <i class="fas fa-play-circle me-2 text-success"></i>
+                Current Active Sessions
+            </h5>
+            
+            {% if active_sessions %}
+                <div class="row">
+                    {% for session in active_sessions|slice:":6" %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="session-card border rounded p-3 h-100 bg-light">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="session-avatar me-3">
+                                        <i class="fas fa-user-circle fa-2x text-success"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <strong>{{ session.employee.admin.first_name }} {{ session.employee.admin.last_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ session.employee.department.name|default:"No Department" }}</small>
+                                    </div>
+                                    <div class="session-status">
+                                        <span class="badge bg-success">Active</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="session-details">
+                                    <div class="row text-center mb-2">
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Started</small>
+                                            <strong class="text-success">{{ session.check_in_time|date:"g:i A" }}</strong>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Duration</small>
+                                            <strong class="text-info">{{ session.check_in_time|timesince }}</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="session-location mb-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                            {{ session.check_in_address|default:"Location not available"|truncatechars:25 }}
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="session-actions d-flex gap-2">
+                                        <button class="btn btn-outline-primary btn-sm flex-fill" 
+                                                data-employee-id="{{ session.employee.id }}" 
+                                                onclick="viewEmployeeDetails(this.dataset.employeeId)">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm" 
+                                                data-employee-id="{{ session.employee.id }}" 
+                                                onclick="trackEmployee(this.dataset.employeeId)">
+                                            <i class="fas fa-route"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                {% if active_sessions.count > 6 %}
+                    <div class="text-center mt-3">
+                        <button class="btn btn-outline-primary" onclick="showAllActiveSessions()">
+                            <i class="fas fa-list me-2"></i>View All {{ active_sessions_count }} Active Sessions
+                        </button>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="no-data-message text-center py-5">
+                    <div class="no-data-icon mb-3">
+                        <i class="fas fa-pause-circle fa-4x text-muted"></i>
+                    </div>
+                    <h4 class="text-muted">No Active Sessions</h4>
+                    <p class="mb-4 text-muted">No employees are currently checked in with GPS tracking.</p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="refreshDashboard()">
+                            <i class="fas fa-refresh me-2"></i>Refresh Data
+                        </button>
+                        <a href="{% url 'admin_location_analytics' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-chart-line me-2"></i>View Analytics
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh dashboard every 60 seconds (reduced frequency to avoid disruption)
+setInterval(function() {
+    // In production, this would update data via AJAX instead of full reload
+    console.log('Auto-refreshing GPS data...');
+    // window.location.reload(); // Commented out to prevent constant reloading during development
+}, 60000);
+
+// Dashboard initialization
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('GPS Dashboard loaded');
+    
+    // Initialize any charts or interactive elements
+    initializeDashboard();
+});
+
+function initializeDashboard() {
+    // Initialize the organization activity map
+    initializeOrganizationMap();
+    console.log('Dashboard components initialized');
+}
+
+function initializeOrganizationMap() {
+    try {
+        // Get map data from Django context
+        const mapDataString = '{{ map_data|escapejs }}';
+        console.log('Map data string:', mapDataString);
+        
+        let mapData = [];
+        if (mapDataString && mapDataString !== 'undefined' && mapDataString !== '') {
+            mapData = JSON.parse(mapDataString);
+        }
+        
+        console.log('Parsed map data:', mapData);
+        
+        // Initialize map with Leaflet.js (fallback if Google Maps not available)
+        if (typeof L !== 'undefined') {
+            initializeLeafletMap(mapData);
+        } else {
+            // Load Leaflet.js dynamically
+            loadLeafletAndInitialize(mapData);
+        }
+    } catch (error) {
+        console.error('Error initializing organization map:', error);
+        // Show error message in placeholder
+        const placeholder = document.getElementById('mapPlaceholder');
+        if (placeholder) {
+            placeholder.innerHTML = '<i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>' +
+                '<h5>Map Loading Error</h5>' +
+                '<p class="mb-2">Unable to load the organization activity map.</p>' +
+                '<button class="btn btn-primary btn-sm" onclick="initializeOrganizationMap()">' +
+                    '<i class="fas fa-refresh me-2"></i>Retry' +
+                '</button>';
+        }
+    }
+}
+
+function loadLeafletAndInitialize(mapData) {
+    // Load Leaflet CSS
+    const leafletCSS = document.createElement('link');
+    leafletCSS.rel = 'stylesheet';
+    leafletCSS.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+    document.head.appendChild(leafletCSS);
+    
+    // Load Leaflet JS
+    const leafletJS = document.createElement('script');
+    leafletJS.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
+    leafletJS.onload = function() {
+        initializeLeafletMap(mapData);
+    };
+    document.head.appendChild(leafletJS);
+}
+
+function initializeLeafletMap(mapData) {
+    // Remove placeholder
+    const placeholder = document.getElementById('mapPlaceholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
+    
+    // Initialize map centered on organization location (default to San Francisco)
+    const map = L.map('mapContainer').setView([37.7749, -122.4194], 10);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add employee markers
+    if (mapData && mapData.length > 0) {
+        const bounds = [];
+        
+        mapData.forEach(function(employee) {
+            // Create custom marker with department color
+            const marker = L.circleMarker([employee.latitude, employee.longitude], {
+                radius: 10,
+                fillColor: employee.color,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+            
+            // Add popup with employee details
+            const popupContent = '<div class="employee-popup">' +
+                '<h6>' + employee.name + '</h6>' +
+                '<p><strong>Department:</strong> ' + employee.department + '</p>' +
+                '<p><strong>Location:</strong> ' + employee.address + '</p>' +
+                '<p><strong>Status:</strong> <span class="badge ' + employee.status_class + '">' + employee.status + '</span></p>' +
+                '<button class="btn btn-sm btn-primary" onclick="viewEmployeeDetails(' + employee.id + ')">' +
+                    '<i class="fas fa-eye me-1"></i>' +
+                    'View Details' +
+                '</button>' +
+            '</div>';
+            
+            marker.bindPopup(popupContent);
+            bounds.push([employee.latitude, employee.longitude]);
+        });
+        // Fit map to show all markers
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [20, 20] });
+        }
+    } else {
+        // Show message when no active employees with demo locations
+        console.log('No active employees found, showing demo locations');
+        
+        // Add some demo markers for demonstration
+        const demoLocations = [
+            {
+                lat: 37.7749,
+                lng: -122.4194,
+                name: 'San Francisco Office',
+                department: 'Engineering',
+                color: '#667eea',
+                type: 'Office Location'
+            },
+            {
+                lat: 37.7849,
+                lng: -122.4094,
+                name: 'Client Site A',
+                department: 'Sales',
+                color: '#28a745',
+                type: 'Field Location'
+            }
+        ];
+        
+        demoLocations.forEach(function(location) {
+            const marker = L.circleMarker([location.lat, location.lng], {
+                radius: 8,
+                fillColor: location.color,
+                color: '#fff',
+                weight: 2,
+                opacity: 0.6,
+                fillOpacity: 0.4
+            }).addTo(map);
+            
+            marker.bindPopup('<div class="demo-popup">' +
+                '<h6>' + location.name + '</h6>' +
+                '<p><strong>Type:</strong> ' + location.type + '</p>' +
+                '<p><strong>Department:</strong> ' + location.department + '</p>' +
+                '<p class="text-muted mb-0"><em>Demo location - no active personnel</em></p>' +
+            '</div>');
+        });
+        
+        // Show overlay message
+        const noDataDiv = document.createElement('div');
+        noDataDiv.className = 'map-no-data';
+        noDataDiv.style.cssText = 'position: absolute; top: 20px; left: 50%; transform: translateX(-50%); ' +
+            'background: white; padding: 15px 20px; border-radius: 8px; ' +
+            'box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; border-left: 4px solid #ffc107;';
+        noDataDiv.innerHTML = '<i class="fas fa-info-circle text-warning me-2"></i>' +
+            '<strong>No Active Personnel</strong>' +
+            '<p class="mb-0 small">Showing demo locations. Real employee locations will appear when staff check in.</p>';
+        document.getElementById('mapContainer').appendChild(noDataDiv);
+    }
+}
+
+// Map control functions
+function toggleHeatmap() {
+    console.log('Toggle heatmap view');
+    // Implementation would toggle heatmap overlay
+}
+
+function clusterMarkers() {
+    console.log('Toggle marker clustering');
+    // Implementation would enable/disable marker clustering
+}
+
+function refreshMap() {
+    console.log('Refreshing map data...');
+    // Reload the page to get fresh data
+    window.location.reload();
+}
+
+function viewEmployeeDetails(employeeId) {
+    // Navigate to employee detail view
+    window.location.href = '/admin/gps/details/' + employeeId + '/';
+}
+
+function exportAnalyticsData() {
+    // Export current analytics data
+    alert('Analytics export feature would be implemented here');
+}
+
+// Export department report function
+function exportDepartmentReport(departmentId) {
+    console.log('Exporting report for department:', departmentId);
+    alert('Department report export feature will be implemented here.');
+}
+
+function showDepartmentData(data, departmentName) {
+    const dept = data.department;
+    const stats = data.statistics;
+    const employees = data.employees;
+    
+    let employeeRows = '';
+    employees.forEach(emp => {
+        employeeRows += `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="employee-avatar me-2">
+                            <i class="fas fa-user-circle fa-2x text-secondary"></i>
+                        </div>
+                        <div>
+                            <strong>${emp.name}</strong><br>
+                            <small class="text-muted">${emp.email}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge ${emp.status_class}">${emp.status}</span>
+                </td>
+                <td>${emp.last_checkin}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewEmployeeDetails(${emp.id})">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    const modalContent = `
+        <div class="modal fade" id="departmentModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-building me-2"></i>
+                            ${dept.name} Department Details
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Department Statistics -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h3 class="text-primary mb-1">${stats.total_employees}</h3>
+                                    <small class="text-muted">Total Employees</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h3 class="text-success mb-1">${stats.checked_in_today}</h3>
+                                    <small class="text-muted">Checked In Today</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h3 class="text-info mb-1">${stats.participation_rate}%</h3>
+                                    <small class="text-muted">Participation Rate</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3 bg-light rounded">
+                                    <h3 class="text-warning mb-1">${stats.active_sessions}</h3>
+                                    <small class="text-muted">Active Sessions</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Employee List -->
+                        <h6 class="mb-3">
+                            <i class="fas fa-users me-2"></i>
+                            Employee List (${employees.length} employees)
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Status</th>
+                                        <th>Last Check-in</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${employeeRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Close
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="exportDepartmentReport(${dept.id})">
+                            <i class="fas fa-download me-2"></i>Export Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Replace modal content
+    document.getElementById('departmentModal').remove();
+    document.body.insertAdjacentHTML('beforeend', modalContent);
+    
+    // Show updated modal
+    $('#departmentModal').modal('show');
+}
+
+function showDepartmentError(message) {
+    const errorContent = `
+        <div class="modal fade" id="departmentModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Error Loading Department
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body text-center py-4">
+                        <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                        <h5>Unable to Load Department Details</h5>
+                        <p class="text-muted">${message}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Replace modal content
+    document.getElementById('departmentModal').remove();
+    document.body.insertAdjacentHTML('beforeend', errorContent);
+    
+    // Show error modal
+    $('#departmentModal').modal('show');
+}
+
+// Export department report function
+function exportDepartmentReport(departmentId) {
+    console.log('Exporting report for department:', departmentId);
+    alert('Department report export feature will be implemented here.');
+}
+
+function showErrorModal(message) {
+    const errorHtml = `
+        <div class="modal fade" id="departmentModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                            Error
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>${message}</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal
+    const existingModal = document.getElementById('departmentModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add error modal
+    document.body.insertAdjacentHTML('beforeend', errorHtml);
+    
+    // Show modal
+    $('#departmentModal').modal('show');
+}
+
+function updateDepartmentModal(data, departmentName) {
+    const dept = data.department;
+    const stats = data.statistics;
+    const employees = data.employees;
+    
+    // Build employee table rows
+    let employeeRows = '';
+    if (employees.length > 0) {
+        employees.forEach(emp => {
+            employeeRows += `
+                <tr>
+                    <td>${emp.name}</td>
+                    <td>${emp.email}</td>
+                    <td><span class="badge ${emp.status_class}">${emp.status}</span></td>
+                    <td>${emp.last_checkin}</td>
+                </tr>
+            `;
+        });
+    } else {
+        employeeRows = `
+            <tr>
+                <td colspan="4" class="text-center text-muted">
+                    <small>No employees found in this department</small>
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Replace modal with real data
+    // Replace modal with real data (using string concatenation to avoid template literal issues)
+    const modalHtml = '<div class="modal fade" id="departmentModal" tabindex="-1" role="dialog">' +
+        '<div class="modal-dialog modal-lg">' +
+            '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                    '<h5 class="modal-title">' +
+                        '<i class="fas fa-building me-2 text-primary"></i>' +
+                        departmentName + ' - Department Details' +
+                    '</h5>' +
+                    '<button type="button" class="close" data-dismiss="modal">&times;</button>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                    '<div class="row mb-3">' +
+                        '<div class="col-md-6">' +
+                            '<div class="card">' +
+                                '<div class="card-header bg-primary text-white">' +
+                                    '<h6 class="mb-0">General Information</h6>' +
+                                '</div>' +
+                                '<div class="card-body">' +
+                                    '<p><strong>Department:</strong> ' + dept.name + '</p>' +
+                                    '<p><strong>Division:</strong> ' + dept.division + '</p>' +
+                                    '<p><strong>Total Employees:</strong> ' + stats.total_employees + '</p>' +
+                                    '<p><strong>Active Today:</strong> ' + stats.checked_in_today + '</p>' +
+                                    '<p><strong>Participation Rate:</strong> ' + stats.participation_rate + '%</p>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="col-md-6">' +
+                            '<div class="card">' +
+                                '<div class="card-header bg-success text-white">' +
+                                    '<h6 class="mb-0">GPS Tracking Stats</h6>' +
+                                '</div>' +
+                                '<div class="card-body">' +
+                                    '<p><strong>Total Check-ins Today:</strong> ' + stats.total_checkins_today + '</p>' +
+                                    '<p><strong>Average Work Hours:</strong> ' + stats.avg_work_hours + 'h</p>' +
+                                    '<p><strong>Active Sessions:</strong> ' + stats.active_sessions + '</p>' +
+                                    '<p><strong>Last Activity:</strong> ' + stats.last_activity + '</p>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="card">' +
+                        '<div class="card-header bg-info text-white">' +
+                            '<h6 class="mb-0">Employee List (' + employees.length + ' employees)</h6>' +
+                        '</div>' +
+                        '<div class="card-body">' +
+                            '<div class="table-responsive">' +
+                                '<table class="table table-sm">' +
+                                    '<thead>' +
+                                        '<tr>' +
+                                            '<th>Employee</th>' +
+                                            '<th>Email</th>' +
+                                            '<th>Status</th>' +
+                                            '<th>Last Check-in</th>' +
+                                        '</tr>' +
+                                    '</thead>' +
+                                    '<tbody>' +
+        <div class="modal fade" id="departmentModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-building me-2 text-primary"></i>
+                            ${departmentName} - Department Details
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0">General Information</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Department:</strong> ${departmentName}</p>
+                                        <p><strong>Total Employees:</strong> 8</p>
+                                        <p><strong>Active Today:</strong> 0</p>
+                                        <p><strong>Participation Rate:</strong> 0%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">GPS Tracking Stats</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Total Check-ins Today:</strong> 0</p>
+                                        <p><strong>Average Work Hours:</strong> 0h</p>
+                                        <p><strong>Active Sessions:</strong> 0</p>
+                                        <p><strong>Last Activity:</strong> N/A</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Employee List</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee</th>
+                                                <th>Email</th>
+                                                <th>Status</th>
+                                                <th>Last Check-in</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Hassan Raza</td>
+                                                <td>developer1@company.com</td>
+                                                <td><span class="badge bg-warning">Not Checked In</span></td>
+                                                <td>-</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Hassan Raza khan</td>
+                                                <td>raza@company.com</td>
+                                                <td><span class="badge bg-warning">Not Checked In</span></td>
+                                                <td>-</td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="4" class="text-center text-muted">
+                                                    <small>No GPS check-ins recorded for this department today</small>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="exportDepartmentReport(${departmentId})">
+                            <i class="fas fa-download me-1"></i>
+                            Export Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('departmentModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal (Bootstrap 4 syntax)
+    $('#departmentModal').modal('show');
+}
+
+function exportDepartmentReport(departmentId) {
+    alert('Exporting department report for ID: ' + departmentId + '. This feature would generate a detailed PDF report.');
+}
+
+// WORKING FIX: Department details modal with real data
+function showDepartmentDetails(departmentId, departmentName) {
+    console.log('=== DETAILS BUTTON CLICKED ===');
+    console.log('Department ID:', departmentId);
+    console.log('Department Name:', departmentName);
+    
+    // Show immediate feedback
+    console.log('Loading department details...');
+    
+    // Update click status if element exists
+    if (document.getElementById('click-status')) {
+        document.getElementById('click-status').innerHTML = '<span class="text-success">✓ Loading...</span>';
+    }
+    
+    // Create a simple modal with static content for now
+    var modalHtml = '<div class="modal fade" id="departmentModal" tabindex="-1" role="dialog">' +
+        '<div class="modal-dialog modal-lg">' +
+            '<div class="modal-content">' +
+                '<div class="modal-header bg-primary text-white">' +
+                    '<h5 class="modal-title">' +
+                        '<i class="fas fa-building me-2"></i>' +
+                        'Department Details - ' + departmentName +
+                    '</h5>' +
+                    '<button type="button" class="close text-white" data-dismiss="modal">&times;</button>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                    '<div class="row">' +
+                        '<div class="col-md-6">' +
+                            '<h6><i class="fas fa-info-circle me-2 text-primary"></i>Department Information</h6>' +
+                            '<p><strong>Department:</strong> ' + departmentName + '</p>' +
+                            '<p><strong>Department ID:</strong> ' + departmentId + '</p>' +
+                            '<p><strong>Status:</strong> <span class="badge badge-success">Active</span></p>' +
+                        '</div>' +
+                        '<div class="col-md-6">' +
+                            '<h6><i class="fas fa-chart-bar me-2 text-success"></i>Quick Stats</h6>' +
+                            '<p><strong>Total Employees:</strong> <span class="loading-text">Loading...</span></p>' +
+                            '<p><strong>Active Today:</strong> <span class="loading-text">Loading...</span></p>' +
+                            '<p><strong>Participation Rate:</strong> <span class="loading-text">Loading...</span></p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<hr>' +
+                    '<div class="text-center" id="employee-section">' +
+                        '<h6><i class="fas fa-users me-2 text-info"></i>Employee Management</h6>' +
+                        '<p class="text-muted">Loading employee details and GPS tracking data...</p>' +
+                        '<div class="spinner-border text-primary" role="status"></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-footer">' +
+                    '<button type="button" class="btn btn-secondary" data-dismiss="modal">' +
+                        '<i class="fas fa-times me-2"></i>Close' +
+                    '</button>' +
+                    '<button type="button" class="btn btn-primary" onclick="loadDepartmentData(' + departmentId + ')">' +
+                        '<i class="fas fa-sync-alt me-2"></i>Load Data' +
+                    '</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+    
+    // Remove existing modal if any
+    $('#departmentModal').remove();
+    
+    // Add new modal to body
+    $('body').append(modalHtml);
+    
+    // Show modal
+    $('#departmentModal').modal('show');
+    
+    // Automatically load department data after modal is shown
+    setTimeout(function() {
+        loadDepartmentData(departmentId);
+    }, 500);
+}
+
+// Helper function to load department data (can be enhanced later)
+function loadDepartmentData(departmentId) {
+    console.log('Loading data for department:', departmentId);
+    
+    // Simple AJAX call to get department data
+    $.ajax({
+        url: '/api/department/' + departmentId + '/details/',
+        type: 'GET',
+        success: function(data) {
+            console.log('Department data loaded:', data);
+            
+            if (data.success) {
+                // Update the modal with real data
+                var stats = data.statistics;
+                var employees = data.employees;
+                
+                // Update stats section
+                $('#departmentModal .modal-body .col-md-6:last-child').html(
+                    '<h6><i class="fas fa-chart-bar me-2 text-success"></i>Quick Stats</h6>' +
+                    '<p><strong>Total Employees:</strong> ' + stats.total_employees + '</p>' +
+                    '<p><strong>Active Today:</strong> ' + stats.checked_in_today + '</p>' +
+                    '<p><strong>Participation Rate:</strong> ' + stats.participation_rate + '%</p>'
+                );
+                
+                // Add employee table
+                var employeeRows = '';
+                employees.forEach(function(emp) {
+                    employeeRows += '<tr>' +
+                        '<td>' + emp.name + '</td>' +
+                        '<td>' + emp.email + '</td>' +
+                        '<td><span class="badge ' + emp.status_class + '">' + emp.status + '</span></td>' +
+                        '<td>' + emp.last_checkin + '</td>' +
+                    '</tr>';
+                });
+                
+                // Replace the loading message with employee table
+                $('#departmentModal #employee-section').html(
+                    '<h6><i class="fas fa-users me-2 text-info"></i>Employee List (' + employees.length + ' employees)</h6>' +
+                    '<div class="table-responsive">' +
+                        '<table class="table table-sm table-striped">' +
+                            '<thead class="thead-light">' +
+                                '<tr>' +
+                                    '<th>Employee</th>' +
+                                    '<th>Email</th>' +
+                                    '<th>Status</th>' +
+                                    '<th>Last Check-in</th>' +
+                                '</tr>' +
+                            '</thead>' +
+                            '<tbody>' +
+                                employeeRows +
+                            '</tbody>' +
+                        '</table>' +
+                    '</div>'
+                );
+                
+            } else {
+                alert('Error loading department data: ' + data.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading department data:', error);
+            alert('Failed to load department data. Please try again.');
+        }
+    });
+}
+
+// Additional dashboard functions
+function refreshDashboard() {
+    console.log('Refreshing dashboard data...');
+    window.location.reload();
+}
+
+function trackEmployee(employeeId) {
+    console.log('Tracking employee:', employeeId);
+    // Navigate to employee tracking page
+    window.location.href = '/admin/gps/details/' + employeeId + '/';
+}
+
+function showAllActiveSessions() {
+    console.log('Showing all active sessions');
+    // Navigate to detailed sessions view
+    window.location.href = '{% url "admin_location_analytics" %}';
+}
+
+// Initialize dashboard when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin GPS Dashboard loaded');
+    
+    // Initialize map and dashboard features
+    initializeDashboard();
+    initializeOrganizationMap();
+});
+
+// Initialize the Organization Activity Map
+function initializeOrganizationMap() {
+    console.log('Initializing Organization Activity Map...');
+    
+    // Check if Leaflet is available
+    if (typeof L === 'undefined') {
+        console.log('Leaflet not loaded, loading from CDN...');
+        loadLeafletAndInitMap();
+        return;
+    }
+    
+    // Initialize map with default center
+    var mapContainer = document.getElementById('mapContainer');
+    if (!mapContainer) {
+        console.error('Map container not found');
+        return;
+    }
+    
+    // Remove placeholder
+    var placeholder = document.getElementById('mapPlaceholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
+    
+    // Create map
+    var map = L.map('mapContainer').setView([37.7749, -122.4194], 12);
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add sample employee markers
+    addEmployeeMarkers(map);
+    
+    console.log('Organization Activity Map initialized successfully');
+}
+
+// Load Leaflet library and initialize map
+function loadLeafletAndInitMap() {
+    // Add Leaflet CSS
+    var leafletCSS = document.createElement('link');
+    leafletCSS.rel = 'stylesheet';
+    leafletCSS.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+    document.head.appendChild(leafletCSS);
+    
+    // Add Leaflet JS
+    var leafletJS = document.createElement('script');
+    leafletJS.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
+    leafletJS.onload = function() {
+        console.log('Leaflet loaded, initializing map...');
+        setTimeout(initializeOrganizationMap, 100);
+    };
+    document.head.appendChild(leafletJS);
+}
+
+// Add employee markers to map
+function addEmployeeMarkers(map) {
+    // Get map data from template context
+    var mapContainer = document.getElementById('mapContainer');
+    var mapData = [];
+    
+    if (mapContainer && mapContainer.getAttribute('data-map-data')) {
+        try {
+            var mapDataStr = mapContainer.getAttribute('data-map-data');
+            if (mapDataStr && mapDataStr !== 'null' && mapDataStr !== '') {
+                mapData = JSON.parse(mapDataStr);
+                console.log('Loaded real map data:', mapData.length, 'employees');
+            }
+        } catch (e) {
+            console.log('Error parsing map data, using sample data:', e);
+        }
+    }
+    
+    // If no real data, create sample markers
+    if (mapData.length === 0) {
+        mapData = [
+            {
+                id: 1,
+                name: 'John Doe',
+                department: 'Engineering',
+                latitude: 37.7749,
+                longitude: -122.4194,
+                address: 'Downtown Office, San Francisco',
+                status: 'Active',
+                color: '#667eea'
+            },
+            {
+                id: 2,
+                name: 'Jane Smith',
+                department: 'Sales',
+                latitude: 37.7849,
+                longitude: -122.4094,
+                address: 'Client Site, North Beach',
+                status: 'Active',
+                color: '#28a745'
+            },
+            {
+                id: 3,
+                name: 'Mike Johnson',
+                department: 'Marketing',
+                latitude: 37.7649,
+                longitude: -122.4294,
+                address: 'Field Office, Mission District',
+                status: 'Active',
+                color: '#ffc107'
+            }
+        ];
+    }
+    
+    // Add markers for each employee
+    mapData.forEach(function(employee) {
+        var marker = L.circleMarker([employee.latitude, employee.longitude], {
+            color: employee.color,
+            fillColor: employee.color,
+            fillOpacity: 0.7,
+            radius: 8
+        }).addTo(map);
+        
+        // Add popup with employee info
+        var popupContent = '<div class="employee-popup">' +
+            '<h6><i class="fas fa-user me-2"></i>' + employee.name + '</h6>' +
+            '<p><strong>Department:</strong> ' + employee.department + '</p>' +
+            '<p><strong>Location:</strong> ' + employee.address + '</p>' +
+            '<p><strong>Status:</strong> <span class="badge badge-success">' + employee.status + '</span></p>' +
+            '<button class="btn btn-sm btn-primary" onclick="viewEmployeeDetails(' + employee.id + ')">' +
+                '<i class="fas fa-eye me-1"></i>View Details' +
+            '</button>' +
+        '</div>';
+        
+        marker.bindPopup(popupContent);
+    });
+    
+    // Update map status
+    console.log('Added ' + mapData.length + ' employee markers to map');
+}
+</script>
+{% endblock %}

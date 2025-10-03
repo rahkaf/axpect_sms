@@ -1,73 +1,49 @@
 import json
-import requests
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.contrib import messages
-from django.core.files.storage import FileSystemStorage
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import Attendance, Department, JobCard, Customer, City, Item, JobCardAction, StaffScoresDaily, CommunicationLog
+from .models import Attendance, Department, JobCard, Customer, City, Item, JobCardAction, CommunicationLog
+from django.shortcuts import get_object_or_404
+from .utils import get_home_for_user_type, redirect_to_user_home, validate_required_fields, add_error_message, add_success_message
 from datetime import date, datetime, timedelta
 from django.utils import timezone
-from .EmailBackend import EmailBackend
 
 # Create your views here.
 
 def login_page(request):
     if request.user.is_authenticated:
-        if request.user.user_type == '1':
-            return redirect(reverse("admin_home"))
-        elif request.user.user_type == '2':
-            return redirect(reverse("manager_home"))
-        else:
-            return redirect(reverse("employee_home"))
+        return redirect_to_user_home(request.user.user_type)
     return render(request, 'main_app/login.html')
 
 
 def doLogin(request, **kwargs):
     if request.method != 'POST':
-        return HttpResponse("<h4>Denied</h4>")
+        return HttpResponse("<h4>Access Denied</h4>")
+    
+    is_valid, validation_data = validate_required_fields(request, ['email', 'password'])
+    if not is_valid:
+        add_error_message(request, validation_data['message'])
+        return redirect('/')
+    
+    email = request.POST.get('email')
+    password = request.POST.get('password')
+    
+    user = authenticate(request, username=email, password=password)
+    if user is not None:
+        login(request, user)
+        return redirect_to_user_home(user.user_type)
     else:
-        #Google recaptcha - TEMPORARILY DISABLED FOR TESTING
-        # captcha_token = request.POST.get('g-recaptcha-response')
-        # captcha_url = "https://www.google.com/recaptcha/api/siteverify"
-        # captcha_key = "6Lf9RfcnAAAAAIn2o_U8h3KQwb3lVMeDvenBCXYp"
-        # data = {
-        #     'secret': captcha_key,
-        #     'response': captcha_token
-        # }
-        # # Make request
-        # try:
-        #     captcha_server = requests.post(url=captcha_url, data=data)
-        #     response = json.loads(captcha_server.text)
-        #     if response['success'] == False:
-        #         messages.error(request, 'Invalid Captcha. Try Again')
-        #         return redirect('/')
-        # except:
-        #     messages.error(request, 'Captcha could not be verified. Try Again')
-        #     return redirect('/')
-        
-        #Authenticate
-        user = authenticate(request, username=request.POST.get('email'), password=request.POST.get('password'))
-        if user != None:
-            login(request, user)
-            if user.user_type == '1':
-                return redirect(reverse("admin_home"))
-            elif user.user_type == '2':
-                return redirect(reverse("manager_home"))
-            else:
-                return redirect(reverse("employee_home"))
-        else:
-            messages.error(request, "Invalid details")
-            return redirect("/")
+        add_error_message(request, "Invalid email or password")
+        return redirect("/")
 
 
 
 def logout_user(request):
-    if request.user != None:
+    if request.user is not None:
         # Set user offline before logout
         if hasattr(request.user, 'is_online'):
             request.user.is_online = False
@@ -189,14 +165,10 @@ def jobcard_update_status(request, jobcard_id):
     if new_status not in dict(JobCard.STATUS_CHOICES):
         return JsonResponse({'error': 'Invalid status'}, status=400)
     jc.status = new_status
-    jc.save(update_fields=['status', 'updated_at'])
-    # scoring on completion
+    jc.save(update_fields=['status','updated_at'])
+    
+    # Log jobcard completion
     if new_status == 'COMPLETED' and jc.assigned_to:
-        today = date.today()
-        score, _ = StaffScoresDaily.objects.get_or_create(staff=jc.assigned_to, date=today)
-        score.jobs_completed = (score.jobs_completed or 0) + 1
-        score.points = (score.points or 0) + 1.0
-        score.save()
         JobCardAction.objects.create(jobcard=jc, actor=request.user if request.user.is_authenticated else None, action='COMPLETE', note_text='Completed via API')
         try:
             CommunicationLog.objects.create(
@@ -243,412 +215,6 @@ def nlp_parse_and_followup(request):
         return JsonResponse({'followup_jobcard_id': jc.id, 'due_at': due.isoformat()})
     except Exception as exc:
         return JsonResponse({'error': str(exc)}, status=400)
-
-
-# -----------------------------
-# Attendance Check-in/Check-out APIs
-# -----------------------------
-
-
-def _require_employee(request):
-    if not request.user.is_authenticated or not hasattr(request.user, 'employee'):
-        return JsonResponse({'error': 'Unauthorized'}, status=401)
-    return None
-
-
-def get_or_create_employee_profile(user):
-    """
-    Get or create an Employee profile for any user type (Admin, Manager, Employee)
-    This allows all user types to use the attendance system
-    """
-    try:
-        # First try to get existing employee profile
-        if hasattr(user, 'employee'):
-            return user.employee
-        
-        # If no employee profile exists, create one based on user type
-        from .models import Employee, Manager, Admin, Division, Department
-        
-        if user.user_type == '1':  # CEO/Admin
-            # Get or create a default division and department for admin
-            admin_division, _ = Division.objects.get_or_create(
-                name='Administration',
-                defaults={'name': 'Administration'}
-            )
-            admin_department, _ = Department.objects.get_or_create(
-                name='Executive',
-                division=admin_division,
-                defaults={'name': 'Executive', 'division': admin_division}
-            )
-            
-            # Create employee profile for admin
-            employee = Employee.objects.create(
-                admin=user,
-                division=admin_division,
-                department=admin_department
-            )
-            print(f"Created employee profile for admin: {user.email}")
-            return employee
-            
-        elif user.user_type == '2':  # Manager
-            try:
-                # Get the manager profile
-                manager = Manager.objects.get(admin=user)
-                
-                # Get or create a default department for the manager's division
-                if manager.division:
-                    department, _ = Department.objects.get_or_create(
-                        name='Management',
-                        division=manager.division,
-                        defaults={'name': 'Management', 'division': manager.division}
-                    )
-                else:
-                    # Create default division if manager doesn't have one
-                    default_division, _ = Division.objects.get_or_create(
-                        name='General',
-                        defaults={'name': 'General'}
-                    )
-                    manager.division = default_division
-                    manager.save()
-                    
-                    department, _ = Department.objects.get_or_create(
-                        name='Management',
-                        division=default_division,
-                        defaults={'name': 'Management', 'division': default_division}
-                    )
-                
-                # Create employee profile for manager
-                employee = Employee.objects.create(
-                    admin=user,
-                    division=manager.division,
-                    department=department
-                )
-                print(f"Created employee profile for manager: {user.email}")
-                return employee
-                
-            except Manager.DoesNotExist:
-                # Create manager profile first, then employee profile
-                default_division, _ = Division.objects.get_or_create(
-                    name='General',
-                    defaults={'name': 'General'}
-                )
-                
-                manager = Manager.objects.create(
-                    admin=user,
-                    division=default_division
-                )
-                
-                department, _ = Department.objects.get_or_create(
-                    name='Management',
-                    division=default_division,
-                    defaults={'name': 'Management', 'division': default_division}
-                )
-                
-                employee = Employee.objects.create(
-                    admin=user,
-                    division=default_division,
-                    department=department
-                )
-                print(f"Created manager and employee profile for: {user.email}")
-                return employee
-                
-        elif user.user_type == '3':  # Employee
-            # This should already exist, but create if missing
-            try:
-                return user.employee
-            except AttributeError:
-                # Create with default division/department
-                default_division, _ = Division.objects.get_or_create(
-                    name='General',
-                    defaults={'name': 'General'}
-                )
-                default_department, _ = Department.objects.get_or_create(
-                    name='General',
-                    division=default_division,
-                    defaults={'name': 'General', 'division': default_division}
-                )
-                
-                employee = Employee.objects.create(
-                    admin=user,
-                    division=default_division,
-                    department=default_department
-                )
-                print(f"Created employee profile for: {user.email}")
-                return employee
-        
-        return None
-        
-    except Exception as e:
-        print(f"Error creating employee profile for {user.email}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-
-@csrf_exempt
-def attendance_checkin(request):
-    try:
-        # Debug logging
-        print(f"Attendance checkin request: {request.method}")
-        print(f"User authenticated: {request.user.is_authenticated}")
-        print(f"User: {request.user}")
-        
-        if request.method != 'POST':
-            return JsonResponse({'error': 'Invalid method'}, status=405)
-        
-        # Check authentication
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'User not authenticated'}, status=401)
-        
-        # Get or create employee profile for any user type
-        employee = get_or_create_employee_profile(request.user)
-        if not employee:
-            return JsonResponse({'error': 'Could not create employee profile'}, status=500)
-        
-        # Parse request data
-        try:
-            if request.body:
-                payload = json.loads(request.body.decode('utf-8'))
-            else:
-                payload = request.POST.dict()
-            
-            gps = payload.get('gps', '')
-            city_id = payload.get('city_id')
-            
-            print(f"GPS data: {gps}")
-            print(f"Employee: {employee}")
-            
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
-        
-        # Create or update individual employee attendance
-        today = timezone.localdate()
-        from .models import EmployeeGPSAttendance
-        attendance, created = EmployeeGPSAttendance.objects.get_or_create(
-            employee=employee, 
-            date=today
-        )
-        
-        # Check if already checked in
-        if attendance.checkin_time:
-            return JsonResponse({
-                'error': 'Already checked in today',
-                'checkin_time': attendance.checkin_time.isoformat()
-            }, status=400)
-        
-        # Update attendance record
-        attendance.checkin_time = timezone.now()
-        attendance.checkin_gps = gps or ''
-        if city_id:
-            attendance.working_city_id = city_id
-        attendance.save()
-        
-        print(f"Attendance saved: {attendance.id}")
-        
-        return JsonResponse({
-            'success': True,
-            'attendance_id': attendance.id, 
-            'checkin_time': attendance.checkin_time.isoformat(),
-            'message': 'Check-in successful'
-        })
-        
-    except Exception as exc:
-        print(f"Attendance checkin error: {str(exc)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': f'Server error: {str(exc)}'}, status=500)
-
-
-@csrf_exempt
-def attendance_checkout(request):
-    try:
-        if request.method != 'POST':
-            return JsonResponse({'error': 'Invalid method'}, status=405)
-        
-        # Check authentication
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'User not authenticated'}, status=401)
-        
-        # Get or create employee profile for any user type
-        employee = get_or_create_employee_profile(request.user)
-        if not employee:
-            return JsonResponse({'error': 'Could not create employee profile'}, status=500)
-        
-        # Parse request data
-        try:
-            payload = json.loads(request.body.decode('utf-8')) if request.body else request.POST
-            gps = payload.get('gps', '')
-            notes = payload.get('notes', '')
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
-        
-        today = timezone.localdate()
-        from .models import EmployeeGPSAttendance
-        attendance = EmployeeGPSAttendance.objects.filter(employee=employee, date=today).first()
-        
-        if not attendance or not attendance.checkin_time:
-            return JsonResponse({'error': 'No active check-in for today'}, status=404)
-        
-        if attendance.checkout_time:
-            return JsonResponse({
-                'error': 'Already checked out today', 
-                'checkout_time': attendance.checkout_time.isoformat()
-            }, status=400)
-        
-        # Update checkout details
-        attendance.checkout_time = timezone.now()
-        attendance.checkout_gps = gps or ''
-        attendance.work_notes = notes or ''
-        attendance.save()
-        
-        return JsonResponse({
-            'success': True,
-            'attendance_id': attendance.id, 
-            'checkout_time': attendance.checkout_time.isoformat(), 
-            'hours_worked': attendance.hours_worked,
-            'message': 'Check-out successful'
-        })
-        
-    except Exception as exc:
-        print(f"Attendance checkout error: {str(exc)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': f'Server error: {str(exc)}'}, status=500)
-
-
-@csrf_exempt
-def get_attendance_status(request):
-    """Get current attendance status for the logged-in user"""
-    try:
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'User not authenticated'}, status=401)
-        
-        # Get or create employee profile
-        employee = get_or_create_employee_profile(request.user)
-        if not employee:
-            return JsonResponse({'error': 'Could not create employee profile'}, status=500)
-        
-        today = timezone.localdate()
-        from .models import EmployeeGPSAttendance
-        
-        try:
-            attendance = EmployeeGPSAttendance.objects.get(employee=employee, date=today)
-            
-            status = {
-                'date': today.isoformat(),
-                'is_checked_in': attendance.checkin_time is not None,
-                'is_checked_out': attendance.checkout_time is not None,
-                'checkin_time': attendance.checkin_time.isoformat() if attendance.checkin_time else None,
-                'checkout_time': attendance.checkout_time.isoformat() if attendance.checkout_time else None,
-                'hours_worked': attendance.hours_worked,
-                'work_notes': attendance.work_notes,
-                'user_name': f"{request.user.first_name} {request.user.last_name}",
-                'user_type': dict(request.user.USER_TYPE)[int(request.user.user_type)]
-            }
-            
-        except EmployeeGPSAttendance.DoesNotExist:
-            status = {
-                'date': today.isoformat(),
-                'is_checked_in': False,
-                'is_checked_out': False,
-                'checkin_time': None,
-                'checkout_time': None,
-                'hours_worked': None,
-                'work_notes': '',
-                'user_name': f"{request.user.first_name} {request.user.last_name}",
-                'user_type': dict(request.user.USER_TYPE)[int(request.user.user_type)]
-            }
-        
-        return JsonResponse(status)
-        
-    except Exception as exc:
-        print(f"Get attendance status error: {str(exc)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': f'Server error: {str(exc)}'}, status=500)
-
-
-# -----------------------------
-# Scoring Leaderboard & Summary APIs
-# -----------------------------
-
-
-def scoring_leaderboard_today(request):
-    today = timezone.localdate()
-    qs = StaffScoresDaily.objects.filter(date=today).select_related('staff__admin').order_by('-points')
-    data = [{
-        'staff_id': s.staff.id,
-        'name': f"{s.staff.admin.first_name} {s.staff.admin.last_name}",
-        'points': s.points,
-        'jobs_completed': s.jobs_completed,
-    } for s in qs]
-    return JsonResponse(data, safe=False)
-
-
-def scoring_summary(request):
-    period = request.GET.get('period', 'weekly')
-    today = timezone.localdate()
-    if period == 'monthly':
-        start = today - timedelta(days=30)
-    else:
-        start = today - timedelta(days=7)
-    qs = StaffScoresDaily.objects.filter(date__gte=start, date__lte=today).select_related('staff__admin')
-    # aggregate per staff
-    summary = {}
-    for s in qs:
-        key = s.staff.id
-        if key not in summary:
-            summary[key] = {
-                'staff_id': key,
-                'name': f"{s.staff.admin.first_name} {s.staff.admin.last_name}",
-                'points': 0.0,
-                'jobs_completed': 0,
-                'orders_count': 0,
-                'bales_total': 0.0,
-                'payments_count': 0,
-            }
-        agg = summary[key]
-        agg['points'] += s.points or 0
-        agg['jobs_completed'] += s.jobs_completed or 0
-        agg['orders_count'] += s.orders_count or 0
-        agg['bales_total'] += s.bales_total or 0
-        agg['payments_count'] += s.payments_count or 0
-    # to list sorted by points
-    data = sorted(summary.values(), key=lambda x: x['points'], reverse=True)
-    return JsonResponse({'period': period, 'start': start.isoformat(), 'end': today.isoformat(), 'data': data})
-
-
-# -----------------------------
-# Targets API (get my targets and progress)
-# -----------------------------
-
-
-def my_targets(request):
-    if not request.user.is_authenticated or not hasattr(request.user, 'employee'):
-        return JsonResponse({'error': 'Unauthorized'}, status=401)
-    emp = request.user.employee
-    today = timezone.localdate()
-    period = request.GET.get('period') or f"{today.year}-{today.month:02d}"
-    tgt = Targets.objects.filter(staff=emp, period=period).first()
-    # progress based on StaffScoresDaily aggregation for month
-    start = today.replace(day=1)
-    qs = StaffScoresDaily.objects.filter(staff=emp, date__gte=start, date__lte=today)
-    progress = {
-        'jobs_completed': sum([x.jobs_completed or 0 for x in qs]),
-        'orders_count': sum([x.orders_count or 0 for x in qs]),
-        'bales_total': sum([x.bales_total or 0 for x in qs]),
-        'payments_count': sum([x.payments_count or 0 for x in qs]),
-        'points': sum([x.points or 0 for x in qs]),
-    }
-    data = {
-        'period': period,
-        'goal_calls': tgt.goal_calls if tgt else 0,
-        'goal_visits': tgt.goal_visits if tgt else 0,
-        'goal_bales': tgt.goal_bales if tgt else 0,
-        'goal_collections': tgt.goal_collections if tgt else 0,
-        'progress': progress,
-    }
-    return JsonResponse(data)
 
 
 # -----------------------------
@@ -839,48 +405,4 @@ def test_ajax(request):
             'user_type': getattr(request.user, 'user_type', 'None'),
             'post_data': dict(request.POST)
         })
-    return JsonResponse({'status': 'error', 'message': 'Only POST allowed'})
-
-
-@csrf_exempt  
-def test_manager_checkin(request):
-    """Test manager check-in functionality"""
-    print(f"Test manager checkin called - Method: {request.method}")
-    print(f"User: {request.user}, Authenticated: {request.user.is_authenticated}")
-    print(f"User type: {getattr(request.user, 'user_type', 'None')}")
-    print(f"POST data: {dict(request.POST)}")
-    
-    if request.method == 'POST':
-        try:
-            from .models import Manager, Employee, Department, EmployeeGPSAttendance
-            from django.utils import timezone
-            
-            if request.user.user_type == '2':
-                manager = Manager.objects.get(admin=request.user)
-                print(f"Manager found: {manager}")
-                
-                # Get or create Employee record
-                employee, created = Employee.objects.get_or_create(
-                    admin=request.user,
-                    defaults={
-                        'division': manager.division,
-                        'department': Department.objects.filter(division=manager.division).first()
-                    }
-                )
-                print(f"Employee record: {employee} (created: {created})")
-                
-                return JsonResponse({
-                    'status': 'success',
-                    'message': 'Test successful',
-                    'manager': str(manager),
-                    'employee': str(employee),
-                    'employee_created': created
-                })
-            else:
-                return JsonResponse({'status': 'error', 'message': f'Wrong user type: {request.user.user_type}'})
-                
-        except Exception as e:
-            print(f"Error in test_manager_checkin: {e}")
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
     return JsonResponse({'status': 'error', 'message': 'Only POST allowed'})

@@ -1,0 +1,329 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .locations-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .locations-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .employee-location-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .employee-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+    }
+    
+    .location-info {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 15px;
+        margin-top: 10px;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-online {
+        background-color: #28a745;
+    }
+    
+    .status-offline {
+        background-color: #dc3545;
+    }
+    
+    .status-idle {
+        background-color: #ffc107;
+    }
+    
+    .no-data-message {
+        text-align: center;
+        padding: 60px;
+        color: #666;
+    }
+    
+    .no-data-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    
+    .map-placeholder {
+        background: #f8f9fa;
+        border-radius: 8px;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    
+    #team-location-map {
+        border-radius: 8px;
+        border: 2px solid #e9ecef;
+    }
+    
+    .status-checked-in {
+        background-color: #28a745 !important;
+    }
+    
+    .status-checked-out {
+        background-color: #ffc107 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="locations-card">
+                <div class="locations-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        Team Employee Locations
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        {{ manager.admin.first_name }}, monitor your team's real-time locations.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div id="team-location-map" style="height: 400px;">
+                <!-- Interactive map will load here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Locations -->
+    <div class="row">
+        <div class="col-12">
+            <h5 class="mb-3">
+                <i class="fas fa-users me-2 text-primary"></i>
+                Team Members & Locations 
+                <span class="badge bg-primary ms-2">{{ employee_locations|length }} Active Locations</span>
+            </h5>
+            
+            {% if employee_locations %}
+                {% for location in employee_locations %}
+                    <div class="employee-location-card">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <div class="employee-name">
+                                    {{ location.employee.admin.first_name }} {{ location.employee.admin.last_name }}
+                                </div>
+                                <small class="text-muted">{{ location.employee.department.name|default:"No Department" }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <!-- Employee Status -->
+                                <span class="status-indicator {% if location.status == 'Checked In' %}status-online{% else %}status-offline{% endif %}"></span>
+                                <span class="text-muted">Status: {{ location.status }}</span><br>
+                                <small class="text-muted">{{ location.address|truncatechars:30 }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <!-- Last Seen -->
+                                <strong>Check-in Time:</strong><br>
+                                <span class="text-muted">{{ location.check_in_time|date:"H:i A" }}</span>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <!-- Action Buttons -->
+                                <button class="btn btn-outline-primary btn-sm me-2" onclick="showEmployeeOnMap({{ location.latitude }}, {{ location.longitude }}, '{{ location.employee.admin.first_name }}')">
+                                    <i class="fas fa-eye me-1"></i>
+                                    View on Map
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="copyLocation({{ location.latitude }}, {{ location.longitude }})">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    Copy Coords
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="location-info">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Current Location:</strong><br>
+                                    <span class="text-muted">{{ location.address }}</span>
+                                    <br><small class="text-muted">Lat: {{ location.latitude|floatformat:6 }}, Lng: {{ location.longitude|floatformat:6 }}</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Work Duration:</strong><br>
+                                    <span class="text-muted">{{ location.duration_hours|floatformat:1 }} hours</span>
+                                    {% if location.work_summary %}
+                                        <br><small class="text-muted">Summary: {{ location.work_summary|truncatechars:40 }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data-message">
+                    <div class="no-data-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h4>No Team Members Found</h4>
+                    <p class="mb-4">No employees are assigned to your division.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+let teamMap = null;
+let employeeMarkers = [];
+
+// Employee locations data from Django context
+const employeeLocations = [
+    {% for location in employee_locations %}
+    {
+        name: "{{ location.employee.admin.first_name }} {{ location.employee.admin.last_name }}",
+        lat: {{ location.latitude }},
+        lng: {{ location.longitude }},
+        address: "{{ location.address|escapejs }}",
+        status: "{{ location.status }}",
+        checkInTime: "{{ location.check_in_time }}",
+        duration: {{ location.duration_hours }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTeamMap();
+});
+
+function initializeTeamMap() {
+    if (employeeLocations.length === 0) {
+        document.getElementById('team-location-map').innerHTML = 
+            '<div class="text-center p-5"><i class="fas fa-map fa-3x mb-3 opacity-50"></i><h5>No Active Locations</h5><p class="mb-0 text-muted">No employees have checked in today</p></div>';
+        return;
+    }
+
+    // Load Leaflet dynamically
+    if (!document.querySelector('script[src*="leaflet"]')) {
+        const leafletCSS = document.createElement('link');
+        leafletCSS.rel = 'stylesheet';
+        leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(leafletCSS);
+
+        const leafletJS = document.createElement('script');
+        leafletJS.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        document.head.appendChild(leafletJS);
+        
+        leafletJS.onload = function() {
+            createTeamMap();
+        };
+    } else {
+        createTeamMap();
+    }
+}
+
+function createTeamMap() {
+    if (typeof L === 'undefined') {
+        console.error('Leaflet not loaded');
+        return;
+    }
+
+    // Calculate center of all employee locations
+    let avgLat = employeeLocations.reduce((sum, emp) => sum + emp.lat, 0) / employeeLocations.length;
+    let avgLng = employeeLocations.reduce((sum, emp) => sum + emp.lng, 0) / employeeLocations.length;
+
+    // Initialize map
+    teamMap = L.map('team-location-map').setView([avgLat, avgLng], 10);
+
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(teamMap);
+
+    // Add markers for each employee
+    employeeLocations.forEach(function(employee, index) {
+        const color = employee.status === 'Checked In' ? '#28a745' : '#ffc107';
+        const icon = L.divIcon({
+            className: 'employee-marker',
+            html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([employee.lat, employee.lng], { icon: icon })
+            .addTo(teamMap)
+            .bindPopup(`
+                <div class="employee-popup">
+                    <strong>${employee.name}</strong><br>
+                    ${employee.status}<br>
+                    <small>Location: ${employee.address}</small><br>
+                    <small>Check-in: ${employee.checkInTime}</small>
+                </div>
+            `);
+
+        employeeMarkers.push(marker);
+    });
+}
+
+function showEmployeeOnMap(lat, lng, name) {
+    if (teamMap) {
+        teamMap.setView([lat, lng], 15);
+        // Highlight this specific marker
+        employeeMarkers.forEach(marker => {
+            if (marker.getLatLng().lat === lat && marker.getLatLng().lng === lng) {
+                marker.openPopup();
+            }
+        });
+    }
+}
+
+function copyLocation(lat, lng) {
+    navigator.clipboard.writeText(`${lat}, ${lng}`).then(function() {
+        alert('Location coordinates copied to clipboard!');
+    }).catch(function() {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = `${lat}, ${lng}`;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Location coordinates copied to clipboard!');
+    });
+}
+
+// Auto-refresh every 30 seconds
+setInterval(function() {
+    if (employeeLocations.length > 0) {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %}

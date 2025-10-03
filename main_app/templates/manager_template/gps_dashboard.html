@@ -1,0 +1,371 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .team-dashboard-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+        border: 1px solid #f0f0f0;
+    }
+    
+    .metric-value {
+        font-size: 2.5em;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 500;
+    }
+    
+    .employee-status-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #007bff;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-checked-in {
+        background-color: #28a745;
+    }
+    
+    .status-checked-out {
+        background-color: #dc3545;
+    }
+    
+    .status-working {
+        background-color: #17a2b8;
+    }
+    
+    .status-on-break {
+        background-color: #ffc107;
+    }
+    
+    .employee-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .employee-role {
+        color: #666;
+        font-size: 0.9em;
+    }
+    
+    .location-info {
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-top: 10px;
+        font-size: 0.85em;
+    }
+    
+    .action-buttons {
+        margin-top: 25px;
+    }
+    
+    .btn-custom {
+        border-radius: 8px;
+        padding: 12px 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-success-custom {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-info-custom {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .statistics-grid {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+    }
+    
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    
+    .no-data-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="team-dashboard-card">
+                <div class="dashboard-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h3 class="mb-2">
+                                <i class="fas fa-users me-3"></i>
+                                Team GPS Dashboard
+                            </h3>
+                            <p class="mb-0 opacity-75">
+                                {{ manager.admin.first_name }}, monitor your team's location and attendance.
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="opacity-75">
+                                <small>Last Updated: <span id="last-updated">{{ "now"|date:"g:i A" }}</span></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Section -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value text-success">{{ checked_in_count }}</div>
+                <div class="metric-label">Checked In Today</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value text-primary">{{ total_employees }}</div>
+                <div class="metric-label">Total Employees</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value text-warning">{{ ongoing_sessions.count }}</div>
+                <div class="metric-label">Active Sessions</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-value text-info">
+                    {% if total_employees > 0 and checked_in_count %}
+                        {% widthratio checked_in_count total_employees 100 %}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </div>
+                <div class="metric-label">Attendance Rate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="action-buttons">
+                <a href="{% url 'manager_employee_locations' %}" class="btn btn-primary-custom btn-custom me-3">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    View All Locations
+                </a>
+                <a href="{% url 'manager_attendance_reports' %}" class="btn btn-success-custom btn-custom me-3">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    Attendance Reports
+                </a>
+                <button onclick="refreshDashboard()" class="btn btn-info-custom btn-custom">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Status Section -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="statistics-grid">
+                <h5 class="mb-4">
+                    <i class="fas fa-user-check me-2 text-primary"></i>
+                    Team Status Overview
+                </h5>
+                
+                {% if today_checkins %}
+                    {% for checkin in today_checkins %}
+                        <div class="employee-status-card">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="employee-name">
+                                        <span class="status-indicator status-checked-in"></span>
+                                        {{ checkin.employee.admin.first_name }} {{ checkin.employee.admin.last_name }}
+                                    </div>
+                                    <div class="employee-role">{{ checkin.employee.department.name }}</div>
+                                    {% if checkin.check_in_address %}
+                                        <div class="location-info">
+                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                            {{ checkin.check_in_address }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <strong class="text-success">Checked In</strong><br>
+                                    <small class="text-muted">{{ checkin.check_in_time|date:"g:i A" }}</small>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    {% if checkin.duration_hours %}
+                                        <strong class="text-info">{{ checkin.duration_hours }}h</strong><br>
+                                        <small class="text-muted">Work Duration</small>
+                                    {% else %}
+                                        <strong class="text-warning">Active</strong><br>
+                                        <small class="text-muted">Still Working</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-data-message">
+                        <div class="no-data-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h5>No team members checked in today</h5>
+                        <p class="text-muted">No employees have checked in yet today.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Active Sessions -->
+            <div class="chart-container">
+                <h5 class="mb-4">
+                    <i class="fas fa-play-circle me-2 text-success"></i>
+                    Active Sessions
+                </h5>
+                
+                {% if ongoing_sessions %}
+                    {% for session in ongoing_sessions %}
+                        <div class="mb-3 p-3 border rounded" style="background: #f8f9fa;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ session.employee.admin.first_name }}</strong><br>
+                                    <small class="text-muted">{{ session.get_session_type_display }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-primary">{{ session.duration_minutes }} min</small><br>
+                                    <small class="text-muted">{{ session.start_time|date:"g:i A" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-pause-circle fa-2x mb-2 opacity-50"></i>
+                        <p class="mb-0">No active sessions</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="chart-container">
+                <h5 class="mb-4">
+                    <i class="fas fa-chart-pie me-2 text-info"></i>
+                    Quick Stats
+                </h5>
+                
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <strong class="text-success d-block">{{ checked_in_count }}</strong>
+                            <small class="text-muted">Online</small>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="p-3 bg-light rounded">
+                            <strong class="text-danger d-block">{{ total_employees|add:"-"|add:checked_in_count }}</strong>
+                            <small class="text-muted">Offline</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshDashboard() {
+    // Refresh the page to get updated data
+    window.location.reload();
+}
+
+// Auto-refresh every 2 minutes
+setInterval(function() {
+    const now = new Date();
+    document.getElementById('last-updated').textContent = 
+        now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}, 120000);
+
+// Real-time updates would typically use WebSockets or server-sent events
+// For demonstration, we're showing static data that refreshes on page load
+</script>
+{% endblock %}

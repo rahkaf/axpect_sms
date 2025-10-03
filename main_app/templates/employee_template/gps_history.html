@@ -1,0 +1,220 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .history-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .history-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .search-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .history-item {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #007bff;
+    }
+    
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 15px;
+        font-size: 0.8em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .badge-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .no-data-message {
+        text-align: center;
+        padding: 60px;
+        color: #666;
+    }
+    
+    .no-data-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="history-card">
+                <div class="history-header">
+                  <h3 class="mb-2">
+                    <i class="fas fa-history me-2"></i>
+                    GPS Attendance History
+                  </h3>
+                  <p class="mb-0 opacity-75">
+                    {{ employee.admin.first_name }}, view your GPS check-in and check-out history.
+                  </p>
+                </div>
+            </div>
+          </div>
+    </div>
+
+    <!-- Search Filter -->
+    <div class="search-card">
+        <form method="GET">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="start_date">Start Date:</label>
+                        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="end_date">End Date:</label>
+                        <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>
+                            Filter Records
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- History Records -->
+    <div class="row">
+        <div class="col-12">
+            {% if checkins %}
+                {% for checkin in checkins %}
+                    <div class="history-item">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h5 class="mb-2">
+                                    <i class="fas fa-calendar-day me-2"></i>
+                                    {{ checkin.check_in_time|date:"l, F d, Y" }}
+                                </h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Check-in:</strong><br>
+                                        <span class="text-success">{{ checkin.check_in_time|date:"g:i A" }}</span><br>
+                                        <small class="text-muted">{{ checkin.check_in_address|default:"Location not available" }}</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if checkin.check_out_time %}
+                                            <strong>Check-out:</strong><br>
+                                            <span class="text-danger">{{ checkin.check_out_time|date:"g:i A" }}</span><br>
+                                            <small class="text-muted">{{ checkin.check_out_address|default:"Location not available" }}</small>
+                                        {% else %}
+                                            <strong>Status:</strong><br>
+                                            <span class="text-warning">Still Active</span><br>
+                                            <small class="text-muted">Checked in but not yet out</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                {% if checkin.check_out_time %}
+                                    <span class="status-badge badge-success">Completed</span>
+                                    <div class="mt-2">
+                                        <strong class="text-primary">{{ checkin.duration_hours }}h</strong><br>
+                                        <small class="text-muted">Total Duration</small>
+                                    </div>
+                                {% else %}
+                                    <span class="status-badge badge-warning">Active</span>
+                                    <div class="mt-2">
+                                        <strong class="text-warning">{{ checkin.check_in_time|timesince }}</strong><br>
+                                        <small class="text-muted">Session Duration</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3 text-center">
+                                {% if checkin.work_summary %}
+                                    <div class="work-summary bg-light p-3 rounded">
+                                        <strong class="text-info">
+                                            <i class="fas fa-clipboard-list me-1"></i>
+                                            Work Summary
+                                        </strong>
+                                        <p class="mb-0 mt-2">{{ checkin.work_summary|truncatewords:15 }}</p>
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">
+                                        <i class="fas fa-clipboard"></i>
+                                        <br>No work summary
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <!-- Pagination if needed -->
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        Showing {{ checkins.count }} records
+                        {% if start_date and end_date %}
+                            from {{ start_date }} to {{ end_date }}
+                        {% endif %}
+                    </small>
+                </div>
+            {% else %}
+                <div class="no-data-message">
+                    <div class="no-data-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h4>No GPS Records Found</h4>
+                    <p class="mb-4">
+                        {% if start_date or end_date %}
+                            No GPS check-in records found for the selected date range.
+                        {% else %}
+                            You haven't made any GPS check-ins yet.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'employee_gps_dashboard' %}" class="btn btn-primary">
+                        <i class="fas fa-location-dot me-2"></i>
+                        Go to GPS Dashboard
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

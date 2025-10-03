@@ -1,0 +1,637 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .checkin-card {
+        max-width: 600px;
+        margin: 0 auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        background: white;
+    }
+    
+    .checkin-header {
+        background: linear-gradient(135deg, #56ab2f 0%, #128833 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+    
+    .checkin-body {
+        padding: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #56ab2f;
+        box-shadow: 0 0 0 0.2rem rgba(86, 171, 47, 0.25);
+    }
+    
+    .btn-checkin {
+        background: linear-gradient(135deg, #56ab2f 0%, #128833 100%);
+        border: none;
+        color: white;
+        padding: 15px 30px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 8px;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-checkin:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(86, 171, 47, 0.4);
+    }
+    
+    .btn-checkin:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .location-info {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .location-update {
+        color: #007bff;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    
+    .location-update:hover {
+        text-decoration: underline;
+    }
+    
+    .geofence-info {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .geofence-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px;
+        background: white;
+    }
+    
+    .geofence-item {
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        border: 1px solid transparent;
+    }
+    
+    .geofence-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .geofence-item.selected {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+    }
+    
+    .geofence-distance {
+        font-size: 12px;
+        color: #666;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-green {
+        background-color: #28a745;
+    }
+    
+    .status-red {
+        background-color: #dc3545;
+    }
+    
+    .status-yellow {
+        background-color: #ffc107;
+    }
+    
+    .success-message {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        display: none;
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: Check-in Summary:
+        margin-bottom: 20px;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="checkin-card">
+                <!-- Header -->
+                <div class="checkin-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-sign-in-alt me-2"></i>
+                        GPS Check-In
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        {{ employee.admin.first_name }}, please verify your location before checking in
+                    </p>
+                </div>
+                
+                <!-- Body -->
+                <div class="checkin-body">
+                    <!-- Success/Error Messages -->
+                    <div id="success-message" class="success-message">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span>Successfully checked in!</span>
+                    </div>
+                    
+                    <div id="error-message" class="error-message">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="error-text">Error occurred during check-in</span>
+                    </div>
+                    
+                    <!-- Location Information -->
+                    <div class="location-info">
+                        <h6 class="mb-3">
+                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                            Current Location
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong>Latitude:</strong>
+                                    <span id="latitude-display" class="text-muted">Loading...</span>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Longitude:</strong>
+                                    <span id="longitude-display" class="text-muted">Loading...</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong>Accuracy:</strong>
+                                    <span id="accuracy-display" class="text-muted">Loading...</span>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Status:</strong>
+                                    <span id="location-status">
+                                        <span class="status-indicator status-yellow"></span>
+                                        Getting location...
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Address:</strong>
+                            <div id="address-display" class="text-muted">Loading address...</div>
+                        </div>
+                        
+                        <button onclick="updateLocation()" class="location-update">
+                            <i class="fas fa-sync-alt me-1"></i>Update Location
+                        </button>
+                    </div>
+                    
+                    <!-- Geofence Selection -->
+                    {% if geofences %}
+                        <div class="geofence-info">
+                            <h6 class="mb-3">
+                                <i class="fas fa-map-pin me-2 text-warning"></i>
+                                Available Locations
+                            </h6>
+                            <p class="text-muted mb-3">Select the location you're checking in from:</p>
+                            
+                            <div class="geofence-list">
+                                {% for geofence in geofences %}
+                                    <div class="geofence-item" data-geofence-id="{{ geofence.id }}" 
+                                         data-center-lat="{{ geofence.center_latitude }}" 
+                                         data-center-lng="{{ geofence.center_longitude }}"
+                                         data-radius="{{ geofence.radius_meters }}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ geofence.name }}</strong><br>
+                                                <small class="text-muted">{{ geofence.get_fence_type_display }}</small><br>
+                                                <span class="geofence-distance">
+                                                    {% if geofence.city %}
+                                                        {{ geofence.city.name }}
+                                                    {% endif %}
+                                                </span>
+                                            </div>
+                                            <div class="location-distance" data-geofence-id="{{ geofence.id }}">
+                                                <small class="text-muted">Checking distance...</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Work Summary -->
+                    <div class="form-group">
+                        <label for="work-summary" class="form-label">
+                            <i class="fas fa-clipboard-list me-2"></i>
+                            Today's Work Plan (Optional)
+                        </label>
+                        <textarea id="work-summary" class="form-control" rows="4" 
+                                placeholder="Briefly describe what you plan to work on today..."></textarea>
+                        <small class="text-muted">This helps managers understand your daily tasks and priorities.</small>
+                    </div>
+                    
+                    <!-- Interactive Map Section -->
+                    <div class="form-group">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-map me-2"></i>
+                                Location Map
+                            </label>
+                            <button onclick="toggleMap()" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-map me-1"></i>
+                                <span id="map-toggle-text">Show Map</span>
+                          </button>
+                        </div>
+                        
+                        <div id="verification-map" style="height: 300px; display: none; border-radius: 8px; border: 2px solid #e9ecef;">
+                            <!-- Google Map will be loaded here -->
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            The map shows your current location. Make sure it's accurate before checking in.
+                        </small>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <button id="checkin-btn" onclick="performCheckin()" class="btn-checkin" disabled>
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                Check In Now
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'employee_gps_dashboard' %}" class="btn btn-outline-secondary w-100" 
+                               style="padding: 15px 30px; font-size: 16px; font-weight: 600; border-radius: 8px;">
+                                <i class="fas fa-times me-2"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form data -->
+<form id="checkin-form" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" id="latitude-input" name="latitude">
+    <input type="hidden" id="longitude-input" name="longitude">
+    <input type="hidden" id="accuracy-input" name="accuracy">
+    <input type="hidden" id="geofence-input" name="geofence_id">
+</form>
+
+<script>
+// Google Maps (using OpenStreetMap API as no-cost alternative)
+let currentLocation = null;
+let selectedGeofence = null;
+let map = null;
+let mapMarker = null;
+
+// Initialize location tracking
+document.addEventListener('DOMContentLoaded', function() {
+    updateLocation();
+});
+
+function updateLocation() {
+    const statusElement = document.getElementById('location-status');
+    const latitudeElement = document.getElementById('latitude-display');
+    const longitudeElement = document.getElementById('longitude-display');
+    const accuracyElement = document.getElementById('accuracy-display');
+    const addressElement = document.getElementById('address-display');
+    const checkinBtn = document.getElementById('checkin-btn');
+    
+    statusElement.innerHTML = '<span class="status-indicator status-yellow"></span><i class="fas fa-spinner fa-spin me-2"></i>Getting location...';
+    
+    if (navigator.geolocation) {
+        // First try quick, low-accuracy location
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                currentLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+                
+                // Update UI immediately with basic info
+                latitudeElement.textContent = currentLocation.latitude.toFixed(6);
+                longitudeElement.textContent = currentLocation.longitude.toFixed(6);
+                accuracyElement.textContent = currentLocation.accuracy.toFixed(0) + ' meters';
+                addressElement.textContent = 'Location obtained (address lookup needed)';
+                
+                statusElement.innerHTML = '<span class="status-indicator status-green"></span><i class="fas fa-check-circle me-2"></i>Location obtained';
+                
+                // Enable check-in button immediately
+                checkinBtn.disabled = false;
+                
+                // Update form inputs
+                document.getElementById('latitude-input').value = currentLocation.latitude;
+                document.getElementById('longitude-input').value = currentLocation.longitude;
+                document.getElementById('accuracy-input').value = currentLocation.accuracy;
+                
+                // Check distances to geofences
+                checkGeofenceDistances();
+                
+                // Optionally try to get more accurate location in background
+                setTimeout(function() {
+                    if (navigator.geolocation && currentLocation.accuracy > 100) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(accuratePosition) {
+                                if (accuratePosition.coords.accuracy < currentLocation.accuracy) {
+                                    currentLocation = {
+                                        latitude: accuratePosition.coords.latitude,
+                                        longitude: accuratePosition.coords.longitude,
+                                        accuracy: accuratePosition.coords.accuracy
+                                    };
+                                    
+                                    latitudeElement.textContent = currentLocation.latitude.toFixed(6);
+                                    longitudeElement.textContent = currentLocation.longitude.toFixed(6);
+                                    accuracyElement.textContent = currentLocation.accuracy.toFixed(0) + ' meters';
+                                    
+                                    document.getElementById('latitude-input').value = currentLocation.latitude;
+                                    document.getElementById('longitude-input').value = currentLocation.longitude;
+                                    document.getElementById('accuracy-input').value = currentLocation.accuracy;
+                                    
+                                    checkGeofenceDistances();
+                                }
+                            },
+                            function(error) { console.log('High accuracy location failed:', error); },
+                            { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 }
+                        );
+                    }
+                }, 1000);
+            },
+            function(error) {
+                console.error('Error getting location:', error);
+                statusElement.innerHTML = '<span class="status-indicator status-red"></span>Location denied or unavailable';
+                latitudeElement.textContent = 'Error';
+                longitudeElement.textContent = 'Error';
+                accuracyElement.textContent = 'Error';
+                addressElement.textContent = 'Location unavailable';
+                
+                checkinBtn.disabled = true;
+            },
+            {
+                enableHighAccuracy: false,  // Speed optimization: use basic accuracy first
+                timeout: 5000,             // Shorter timeout for better UX
+                maximumAge: 30000           // Accept cached location up to 30 seconds
+            }
+        );
+    } else {
+        statusElement.innerHTML = '<span class="status-indicator status-red"></span>Geolocation not supported';
+        checkinBtn.disabled = true;
+    }
+}
+
+function checkGeofenceDistances() {
+    if (!currentLocation) return;
+    
+    const geofenceElements = document.querySelectorAll('.geofence-item');
+    
+    geofenceElements.forEach(item => {
+        const lat = parseFloat(item.dataset.centerLat);
+        const lng = parseFloat(item.dataset.centerLng);
+        const radius = parseInt(item.dataset.radius);
+        const distanceElement = item.querySelector('.location-distance');
+        
+        const distance = calculateDistance(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            lat,
+            lng
+        );
+        
+        distanceElement.innerHTML = `<small class="text-muted">${distance.toFixed(0)}m away</small>`;
+        
+        if (distance <= radius) {
+            item.classList.add('selected');
+            item.style.backgroundColor = '#e8f5e8';
+            item.style.borderColor = '#28a745';
+            distanceElement.innerHTML = `<small class="text-success">✓ Within area</small>`;
+            
+            if (!selectedGeofence) {
+                selectedGeofence = item.dataset.geofenceId;
+                document.getElementById('geofence-input').value = selectedGeofence;
+            }
+        } else {
+            item.style.backgroundColor = '#f8f9fa';
+            item.style.borderColor = '#dee2e6';
+        }
+        
+        // Add click handler
+        item.addEventListener('click', function() {
+            geofenceElements.forEach(el => el.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedGeofence = this.dataset.geofenceId;
+            document.getElementById('geofence-input').value = selectedGeofence;
+        });
+    });
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth's radius in meters
+    const lat1Rad = lat1 * Math.PI / 180;
+    const lat2Rad = lat2 * Math.PI / 180;
+    const deltaLatRad = (lat2 - lat1) * Math.PI / 180;
+    const deltaLonRad = (lon2 - lon1) * Math.PI / 180;
+    
+    const a = Math.sin(deltaLatRad/2) * Math.sin(deltaLatRad/2) +
+              Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+              Math.sin(deltaLonRad/2) * Math.sin(deltaLonRad/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    return R * c;
+}
+
+function performCheckin() {
+    const checkinBtn = document.getElementById('checkin-btn');
+    const successMessage = document.getElementById('success-message');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+    
+    // Disable button and show loading
+    checkinBtn.disabled = true;
+    checkinBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking In...';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('latitude', document.getElementById('latitude-input').value);
+    formData.append('longitude', document.getElementById('longitude-input').value);
+    formData.append('accuracy', document.getElementById('accuracy-input').value);
+    formData.append('work_summary', document.getElementById('work-summary').value);
+    
+    if (selectedGeofence) {
+        formData.append('geofence_id', selectedGeofence);
+    }
+    
+    // Send request
+    fetch('{% url "api_gps_checkin" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            successMessage.style.display = 'block';
+            setTimeout(() => {
+                window.location.href = '{% url "employee_gps_dashboard" %}';
+            }, 2000);
+        } else {
+            errorText.textContent = data.error || 'Unknown error occurred';
+            errorMessage.style.display = 'block';
+            checkinBtn.disabled = false;
+            checkinBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Try Again';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        errorText.textContent = 'Network error. Please try again.';
+        errorMessage.style.display = 'block';
+        checkinBtn.disabled = false;
+        checkinBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Try Again';
+    });
+}
+
+// Map functions
+function toggleMap() {
+    const mapElement = document.getElementById('verification-map');
+    const toggleText = document.getElementById('map-toggle-text');
+    
+    if (mapElement.style.display === 'none' || mapElement.style.display === '') {
+        // Show map
+        mapElement.style.display = 'block';
+        toggleText.textContent = 'Hide Map';
+        
+        // Initialize map if not already done
+        if (!map) {
+            initMap();
+        }
+    } else {
+        // Hide map
+        mapElement.style.display = 'none';
+        toggleText.textContent = 'Show Map';
+    }
+}
+
+function initMap() {
+    // Using Leaflet (free alternative to Google Maps)
+    const mapContainer = document.getElementById('verification-map');
+    
+    if (!currentLocation) {
+        mapContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="fas fa-exclamation-triangle me-2"></i>Location data unavailable</div>';
+        return;
+    }
+    
+    // Load Leaflet CSS and JavaScript dynamically
+    if (!document.querySelector('script[src*="leaflet"]')) {
+        const leafletCSS = document.createElement('link');
+        leafletCSS.rel = 'stylesheet';
+        leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(leafletCSS);
+        
+        const leafletJS = document.createElement('script');
+        leafletJS.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        document.head.appendChild(leafletJS);
+        
+        leafletJS.onload = function() {
+            initLeafletMap();
+        };
+    } else {
+        initLeafletMap();
+    }
+}
+
+function initLeafletMap() {
+    const mapContainer = document.getElementById('verification-map');
+    
+    // Initialize Leaflet map
+    if (typeof L !== 'undefined') {
+        map = L.map('verification-map').setView([currentLocation.latitude, currentLocation.longitude], 15);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Add marker for current location
+        mapMarker = L.marker([currentLocation.latitude, currentLocation.longitude])
+            .addTo(map)
+            .bindPopup('<b>Your Location</b><br>Accuracy: ' + currentLocation.accuracy.toFixed(0) + 'm')
+            .openPopup();
+        
+        // Add accuracy circle
+        if (currentLocation.accuracy <= 1000) { // Only for reasonable accuracies
+            L.circle([currentLocation.latitude, currentLocation.longitude], {
+                color: 'blue',
+                fillColor: '#3388ff',
+                fillOpacity: 0.2,
+                radius: currentLocation.accuracy
+            }).addTo(map);
+        }
+    }
+}
+</script>
+{% endblock %}

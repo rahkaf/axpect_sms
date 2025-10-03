@@ -1,0 +1,388 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .checkout-card {
+        max-width: 600px;
+        margin: 0 auto;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        background: white;
+    }
+    
+    .checkout-header {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+        text-align: center;
+    }
+    
+    .checkout-body {
+        padding: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #ff6b6b;
+        box-shadow: 0 0 0 0.2rem rgba(255, 107, 107, 0.25);
+    }
+    
+    .btn-checkout {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+        border: none;
+        color: white;
+        padding: 15px 30px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 8px;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-checkout:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+    }
+    
+    .btn-checkout:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .session-summary {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+    
+    .summary-label {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .summary-value {
+        color: #666;
+    }
+    
+    .work-notes {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .notes-label {
+        background-color: #fff3cd;
+        color: #856404;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="checkout-card">
+                <!-- Header -->
+                <div class="checkout-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-sign-out-alt">
+                        </i>
+                        GPS Check-Out
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        {{ employee.admin.first_name }}, please confirm your location before checking out
+                    </p>
+                </div>
+                
+                <!-- Body -->
+                <div class="checkout-body">
+                    <!-- Session Summary -->
+                    <div class="session-summary">
+                        <h6 class="mb-3">
+                            <i class="fas fa-clock me-2 text-primary"></i>
+                            Work Session Summary
+                        </h6>
+                        
+                        <div class="summary-row">
+                            <span class="summary-label">Check-in Time:</span>
+                            <span class="summary-value">{{ active_checkin.check_in_time|date:"F d, Y g:i A" }}</span>
+                        </div>
+                        
+                        <div class="summary-row">
+                            <span class="summary-label">Current Time:</span>
+                            <span class="summary-value" id="current-time">{{ "now"|date:"F d, Y g:i A" }}</span>
+                        </div>
+                        
+                        <div class="summary-row">
+                            <span class="summary-label">Work Duration:</span>
+                            <span class="summary-value" id="work-duration">{{ active_checkin.check_in_time|timesince }}</span>
+                        </div>
+                        
+                        <div class="summary-row">
+                            <span class="summary-label">Check-in Location:</span>
+                            <span class="summary-value">{{ active_checkin.check_in_address|default:"Location not available" }}</span>
+                        </div>
+                        
+                        {% if active_checkin.work_summary %}
+                            <div class="work-notes">
+                                <div class="notes-label">
+                                    <i class="fas fa-clipboard-list me-1"></i>
+                                    Today's Work Summary
+                                </div>
+                                <p class="mb-0">{{ active_checkin.work_summary }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Current Location -->
+                    <div class="session-summary">
+                        <h6 class="mb-3">
+                            <i class="fas fa-map-marker-alt me-2 text-warning"></i>
+                            Current Location
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong>Latitude:</strong>
+                                    <span id="latitude-display" class="text-muted">Loading...</span>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Longitude:</strong>
+                                    <span id="longitude-display" class="text-muted">Loading...</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong>Accuracy:</strong>
+                                    <span id="accuracy-display" class="text-muted">Loading...</span>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Status:</strong>
+                                    <span id="location-status">
+                                        <span class="status-indicator status-yellow"></span>
+                                        Getting location...
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Address:</strong>
+                            <div id="address-display" class="text-muted">Loading address...</div>
+                        </div>
+                        
+                        <button onclick="updateLocation()" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-sync-alt me-1"></i>Update Location
+                        </button>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <button id="checkout-btn" onclick="performCheckout()" class="btn-checkout" disabled>
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Check Out Now
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'employee_gps_dashboard' %}" class="btn btn-outline-secondary w-100" 
+                               style="padding: 15px 30px; font-size: 16px; font-weight: 600; border-radius: 8px;">
+                                <i class="fas fa-times me-2"></i>
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form data -->
+<form id="checkout-form" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<script>
+let currentLocation = null;
+
+// Initialize location tracking
+document.addEventListener('DOMContentLoaded', function() {
+    updateLocation();
+    updateCurrentTime();
+    
+    // Update time every minute
+    setInterval(updateCurrentTime, 60000);
+    setInterval(updateWorkDuration, 60000);
+});
+
+function updateCurrentTime() {
+    const now = new Date();
+    document.getElementById('current-time').textContent = 
+        now.toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
+        });
+}
+
+function updateWorkDuration() {
+    document.getElementById('work-duration').textContent = 
+        '{{ active_checkin.check_in_time|timesince }}';
+}
+
+function updateLocation() {
+    const statusElement = document.getElementById('location-status');
+    const latitudeElement = document.getElementById('latitude-display');
+    const longitudeElement = document.getElementById('longitude-display');
+    const accuracyElement = document.getElementById('accuracy-display');
+    const addressElement = document.getElementById('address-display');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    statusElement.innerHTML = '<span class="status-indicator status-yellow"></span>Getting location...';
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                currentLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy
+                };
+                
+                latitudeElement.textContent = currentLocation.latitude.toFixed(6);
+                longitudeElement.textContent = currentLocation.longitude.toFixed(6);
+                accuracyElement.textContent = currentLocation.accuracy.toFixed(0) + ' meters';
+                addressElement.textContent = 'Address not available (reverse geocoding needed)';
+                
+                statusElement.innerHTML = '<span class="status-indicator status-green"></span>Location obtained';
+                
+                // Enable checkout button
+                checkoutBtn.disabled = false;
+            },
+            function(error) {
+                console.error('Error getting location:', error);
+                statusElement.innerHTML = '<span class="status-indicator status-red"></span>Location denied or unavailable';
+                latitudeElement.textContent = 'Error';
+                longitudeElement.textContent = 'Error';
+                accuracyElement.textContent = 'Error';
+                addressElement.textContent = 'Location unavailable';
+                
+                checkoutBtn.disabled = true;
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            }
+        );
+    } else {
+        statusElement.innerHTML = '<span class="status-indicator status-red"></span>Geolocation not supported';
+        checkoutBtn.disabled = true;
+    }
+}
+
+function performCheckout() {
+    const checkoutBtn = document.getElementById('checkout-btn');
+    
+    // Disable button and show loading
+    checkoutBtn.disabled = true;
+    checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking Out...';
+    
+    // Prepare form data
+    const formData = new FormData();
+    if (currentLocation) {
+        formData.append('latitude', currentLocation.latitude);
+        formData.append('longitude', currentLocation.longitude);
+    }
+    
+    // Send request
+    fetch('{% url "api_gps_checkout" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message and redirect
+            alert('Successfully checked out! Work duration: ' + data.duration_hours + ' hours');
+            window.location.href = '{% url "employee_gps_dashboard" %}';
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>Try Again';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Network error. Please try again.');
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = '<i class="fas fa-sign-out-alt me-2"></i>Try Again';
+    });
+}
+</script>
+
+<style>
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-green {
+    background-color: #28a745;
+}
+
+.status-red {
+    background-color: #dc3545;
+}
+
+.status-yellow {
+    background-color: #ffc107;
+}
+</style>
+{% endblock %}

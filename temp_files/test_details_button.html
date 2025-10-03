@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Dashboard Details Button Test</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">GPS Dashboard Details Button Test</h1>
+        
+        <!-- Test Department Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Test Department Card</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="fw-bold">Sales Team</div>
+                        <small class="text-muted">5 total employees</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong class="text-success">3</strong><br>
+                        <small class="text-muted">Active Today</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong class="text-info">60%</strong><br>
+                        <small class="text-muted">Participation</small>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <button class="btn btn-outline-primary btn-sm" 
+                                data-dept-id="1" 
+                                data-dept-name="Sales Team" 
+                                onclick="showDepartmentDetails(this.dataset.deptId, this.dataset.deptName)">
+                            <i class="fas fa-eye me-1"></i>
+                            Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Information -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Debug Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>JavaScript Console</h6>
+                        <div id="console-output" class="bg-light p-3 rounded" style="height: 200px; overflow-y: auto;">
+                            <small>Console output will appear here...</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Test Results</h6>
+                        <div id="test-results" class="bg-light p-3 rounded">
+                            <p><strong>jQuery Loaded:</strong> <span id="jquery-status">Checking...</span></p>
+                            <p><strong>Bootstrap Loaded:</strong> <span id="bootstrap-status">Checking...</span></p>
+                            <p><strong>Function Defined:</strong> <span id="function-status">Checking...</span></p>
+                            <p><strong>Button Clicked:</strong> <span id="click-status">Not clicked</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to show in our debug panel
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const output = document.getElementById('console-output');
+            output.innerHTML += '<div class="text-success">[LOG] ' + args.join(' ') + '</div>';
+            output.scrollTop = output.scrollHeight;
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const output = document.getElementById('console-output');
+            output.innerHTML += '<div class="text-danger">[ERROR] ' + args.join(' ') + '</div>';
+            output.scrollTop = output.scrollHeight;
+        };
+
+        // Test jQuery
+        $(document).ready(function() {
+            console.log('Document ready - jQuery working');
+            
+            // Check if jQuery is loaded
+            if (typeof $ !== 'undefined') {
+                document.getElementById('jquery-status').innerHTML = '<span class="text-success">✓ Yes</span>';
+            } else {
+                document.getElementById('jquery-status').innerHTML = '<span class="text-danger">✗ No</span>';
+            }
+            
+            // Check if Bootstrap is loaded
+            if (typeof bootstrap !== 'undefined') {
+                document.getElementById('bootstrap-status').innerHTML = '<span class="text-success">✓ Yes</span>';
+            } else {
+                document.getElementById('bootstrap-status').innerHTML = '<span class="text-danger">✗ No</span>';
+            }
+            
+            // Check if our function is defined
+            if (typeof showDepartmentDetails === 'function') {
+                document.getElementById('function-status').innerHTML = '<span class="text-success">✓ Yes</span>';
+            } else {
+                document.getElementById('function-status').innerHTML = '<span class="text-danger">✗ No</span>';
+            }
+        });
+
+        // WORKING FIX: Simple department details modal
+        function showDepartmentDetails(departmentId, departmentName) {
+            console.log('showDepartmentDetails called:', departmentId, departmentName);
+            
+            // Update click status
+            document.getElementById('click-status').innerHTML = '<span class="text-success">✓ Clicked</span>';
+            
+            // Create a simple modal with static content for now
+            var modalHtml = `
+                <div class="modal fade" id="departmentModal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-building me-2"></i>
+                                    Department Details - ${departmentName}
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-info-circle me-2 text-primary"></i>Department Information</h6>
+                                        <p><strong>Department:</strong> ${departmentName}</p>
+                                        <p><strong>Department ID:</strong> ${departmentId}</p>
+                                        <p><strong>Status:</strong> <span class="badge bg-success">Active</span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-chart-bar me-2 text-success"></i>Quick Stats</h6>
+                                        <p><strong>Total Employees:</strong> Loading...</p>
+                                        <p><strong>Active Today:</strong> Loading...</p>
+                                        <p><strong>Participation Rate:</strong> Loading...</p>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <h6><i class="fas fa-users me-2 text-info"></i>Employee Management</h6>
+                                    <p class="text-muted">Employee details and GPS tracking data will be loaded here.</p>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        This feature shows department-specific GPS attendance data and employee locations.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>Close
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="loadDepartmentData(${departmentId})">
+                                    <i class="fas fa-sync-alt me-2"></i>Load Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            $('#departmentModal').remove();
+            
+            // Add new modal to body
+            $('body').append(modalHtml);
+            
+            // Show modal using Bootstrap 5 syntax
+            const modal = new bootstrap.Modal(document.getElementById('departmentModal'));
+            modal.show();
+            
+            console.log('Modal created and shown');
+        }
+
+        // Helper function to load department data (can be enhanced later)
+        function loadDepartmentData(departmentId) {
+            console.log('Loading data for department:', departmentId);
+            
+            // Simulate API call with mock data
+            setTimeout(function() {
+                console.log('Mock data loaded for department:', departmentId);
+                
+                // Update the modal with mock data
+                $('#departmentModal .modal-body .col-md-6:last-child').html(`
+                    <h6><i class="fas fa-chart-bar me-2 text-success"></i>Quick Stats</h6>
+                    <p><strong>Total Employees:</strong> 5</p>
+                    <p><strong>Active Today:</strong> 3</p>
+                    <p><strong>Participation Rate:</strong> 60%</p>
+                `);
+                
+                // Add mock employee table
+                var employeeRows = `
+                    <tr>
+                        <td>John Doe</td>
+                        <td>john@company.com</td>
+                        <td><span class="badge bg-success">Checked In</span></td>
+                        <td>9:00 AM</td>
+                    </tr>
+                    <tr>
+                        <td>Jane Smith</td>
+                        <td>jane@company.com</td>
+                        <td><span class="badge bg-success">Checked In</span></td>
+                        <td>9:15 AM</td>
+                    </tr>
+                    <tr>
+                        <td>Bob Johnson</td>
+                        <td>bob@company.com</td>
+                        <td><span class="badge bg-warning">Not Checked In</span></td>
+                        <td>-</td>
+                    </tr>
+                `;
+                
+                // Replace the loading message with employee table
+                $('#departmentModal .modal-body .text-center').html(`
+                    <h6><i class="fas fa-users me-2 text-info"></i>Employee List (3 employees)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Last Check-in</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${employeeRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `);
+                
+                console.log('Modal updated with mock data');
+            }, 1000);
+        }
+
+        // Test button click programmatically
+        function testButtonClick() {
+            console.log('Testing button click programmatically...');
+            showDepartmentDetails('1', 'Test Department');
+        }
+
+        // Add test button
+        $(document).ready(function() {
+            $('body').append(`
+                <div class="position-fixed bottom-0 end-0 p-3">
+                    <button class="btn btn-warning" onclick="testButtonClick()">
+                        <i class="fas fa-play me-2"></i>Test Function
+                    </button>
+                </div>
+            `);
+        });
+    </script>
+</body>
+</html>

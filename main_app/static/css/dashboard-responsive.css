@@ -274,7 +274,7 @@
     }
 }
 
-/* GPS Attendance specific responsive styles */
+/* Responsive styles for attendance cards */
 .attendance-card {
     border-radius: 15px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -297,11 +297,6 @@
 .status-active { background-color: #28a745; }
 .status-inactive { background-color: #dc3545; }
 .status-pending { background-color: #ffc107; }
-
-.gps-info {
-    font-size: 0.9em;
-    color: #6c757d;
-}
 
 .time-display {
     font-family: 'Courier New', monospace;

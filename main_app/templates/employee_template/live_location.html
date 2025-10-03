@@ -1,0 +1,536 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .live-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .live-header {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .location-card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .map-container {
+        height: 400px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    
+    .map-placeholder {
+        text-align: center;
+        color: #666;
+    }
+    
+    .location-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .info-value {
+        color: #666;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-online {
+        background-color: #28a745;
+    }
+    
+    .status-offline {
+        background-color: #dc3545;
+    }
+    
+    .refresh-btn {
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-refresh {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        border: none;
+    }
+    
+    .btn-refresh:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="live-card">
+                <div class="live-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-map-marker-alt me-2"></i>
+                        Live Location Tracking
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        {{ employee.admin.first_name }}, view your current location and sharing status.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Location Data -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="location-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-map me-2 text-primary"></i>
+                    Real-time Map
+                </h5>
+                
+                <div class="map-container">
+                    <div id="live-location-map" style="width: 100%; height: 100%; display: none;">
+                        <!-- Interactive map will load here -->
+                    </div>
+                    <div id="map-placeholder" class="map-placeholder">
+                        <i class="fas fa-map fa-3x mb-3 opacity-50"></i>
+                        <h5>Live Location Map</h5>
+                        <p class="mb-0">Click "Load Map" to see your location</p>
+                        <small class="text-muted">Interactive map with real-time tracking</small>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button onclick="toggleLiveMap()" id="map-toggle-btn" class="btn btn-outline-primary refresh-btn">
+                        <i class="fas fa-map me-2"></i>
+                        Load Map
+                    </button>
+                    <button onclick="updateLocation()" class="btn btn-refresh refresh-btn">
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Update Location
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="location-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-info-circle me-2 text-info"></i>
+                    Location Details
+                </h5>
+                
+                <div class="location-info">
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">
+                            <span id="tracking-status" class="status-indicator status-offline"></span>
+                            <span id="status-text">Offline</span>
+                        </span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Latitude:</span>
+                        <span class="info-value" id="latitude-display">Not available</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Longitude:</span>
+                        <span class="info-value" id="longitude-display">Not available</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Accuracy:</span>
+                        <span class="info-value" id="accuracy-display">Not available</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Last Updated:</span>
+                        <span class="info-value" id="last-updated">Never</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Battery Level:</span>
+                        <span class="info-value" id="battery-level">Not available</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="location-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-shield-alt me-2 text-warning"></i>
+                    Privacy Settings
+                </h5>
+                
+                <div class="location-info">
+                    <div class="info-row">
+                        <span class="info-label">Location Sharing:</span>
+                        <span class="info-value">
+                            <span id="sharing-status" class="status-indicator status-offline"></span>
+                            <span id="sharing-text">Not Sharing</span>
+                        </span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Duration:</span>
+                        <span class="info-value" id="sharing-duration">0 minutes</span>
+                    </div>
+                    
+                    <button onclick="toggleSharing()" id="sharing-btn" class="btn btn-refresh refresh-btn w-100">
+                        <i class="fas fa-play me-2"></i>
+                        Start Location Sharing
+                    </button>
+                </div>
+            </div>
+
+            <div class="location-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-chart-bar me-2 text-success"></i>
+                    Usage Statistics
+                </h5>
+                
+                <div class="location-info">
+                    <div class="info-row">
+                        <span class="info-label">Today's Distance:</span>
+                        <span class="info-value" id="daily-distance">0 km</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Total Distance:</span>
+                        <span class="info-value" id="total-distance">0 km</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Location Updates:</span>
+                        <span class="info-value" id="total-updates">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let isSharing = false;
+let sharingStartTime = null;
+let locationUpdateCount = 0;
+let liveMap = null;
+let liveMapMarker = null;
+let currentLiveLocation = null;
+
+// Initialize location tracking
+document.addEventListener('DOMContentLoaded', function() {
+    updateLocation();
+});
+
+function updateLocation() {
+    const statusElement = document.getElementById('tracking-status');
+    const statusText = document.getElementById('status-text');
+    const latitudeElement = document.getElementById('latitude-display');
+    const longitudeElement = document.getElementById('longitude-display');
+    const accuracyElement = document.getElementById('accuracy-display');
+    const batteryElement = document.getElementById('battery-level');
+    const lastUpdatedElement = document.getElementById('last-updated');
+    
+    statusElement.className = 'status-indicator status-offline';
+    statusText.textContent = 'Getting location...';
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const coords = position.coords;
+                const timestamp = new Date(position.timestamp);
+                
+                // Store current location for map
+                currentLiveLocation = {
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                    accuracy: coords.accuracy
+                };
+                
+                // Update location display
+                latitudeElement.textContent = coords.latitude.toFixed(6);
+                longitudeElement.textContent = coords.longitude.toFixed(6);
+                accuracyElement.textContent = coords.accuracy.toFixed(0) + ' meters';
+                lastUpdatedElement.textContent = timestamp.toLocaleTimeString();
+                
+                // Update status
+                statusElement.className = 'status-indicator status-online';
+                statusText.textContent = 'Online';
+                
+                // Update map if loaded
+                if (liveMap && currentLiveLocation) {
+                    updateLiveMap(currentLiveLocation);
+                }
+                
+                // Battery level (if available)
+                if ('getBattery' in navigator) {
+                    navigator.getBattery().then(function(battery) {
+                        batteryElement.textContent = Math.round(battery.level * 100) + '%';
+                    });
+                } else {
+                    batteryElement.textContent = 'Not available';
+                }
+                
+                // Increment update count
+                locationUpdateCount++;
+                document.getElementById('total-updates').textContent = locationUpdateCount;
+                
+                // Send location to server if sharing is enabled
+                if (isSharing) {
+                    sendLocationToServer(coords, position.timestamp);
+                }
+            },
+            function(error) {
+                console.error('Error getting location:', error);
+                statusElement.className = 'status-indicator status-offline';
+                statusText.textContent = 'Location unavailable';
+                latitudeElement.textContent = 'Error';
+                longitudeElement.textContent = 'Error';
+                accuracyElement.textContent = 'Error';
+                lastUpdatedElement.textContent = 'Error';
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 30000
+            }
+        );
+    } else {
+        statusElement.className = 'status-indicator status-offline';
+        statusText.textContent = 'Geolocation not supported';
+    }
+}
+
+function toggleSharing() {
+    const sharingBtn = document.getElementById('sharing-btn');
+    const sharingStatus = document.getElementById('sharing-status');
+    const sharingText = document.getElementById('sharing-text');
+    const sharingDuration = document.getElementById('sharing-duration');
+    
+    if (!isSharing) {
+        // Start sharing
+        isSharing = true;
+        sharingStartTime = new Date();
+        sharingBtn.innerHTML = '<i class="fas fa-stop me-2"></i>Stop Sharing';
+        sharingBtn.className = 'btn btn-danger refresh-btn w-100';
+        sharingStatus.className = 'status-indicator status-online';
+        sharingText.textContent = 'Sharing';
+        
+        // Update duration every minute
+        const durationInterval = setInterval(function() {
+            if (isSharing) {
+                const duration = Math.floor((new Date() - sharingStartTime) / 1000 / 60);
+                sharingDuration.textContent = duration + ' minutes';
+            } else {
+                clearInterval(durationInterval);
+            }
+        }, 60000);
+        
+        // Auto-update location every 30 seconds
+        const updateInterval = setInterval(function() {
+            if (isSharing) {
+                updateLocation();
+            } else {
+                clearInterval(updateInterval);
+            }
+        }, 30000);
+        
+    } else {
+        // Stop sharing
+        isSharing = false;
+        sharingBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Location Sharing';
+        sharingBtn.className = 'btn btn-refresh refresh-btn w-100';
+        sharingStatus.className = 'status-indicator status-offline';
+        sharingText.textContent = 'Not Sharing';
+        
+        // Reset duration
+        sharingDuration.textContent = '0 minutes';
+    }
+}
+
+function sendLocationToServer(coords, timestamp) {
+    // Send location data to server
+    const formData = new FormData();
+    formData.append('latitude', coords.latitude);
+    formData.append('longitude', coords.longitude);
+    formData.append('accuracy', coords.accuracy);
+    formData.append('speed', coords.speed || 0);
+    formData.append('timestamp', timestamp);
+    
+    fetch('{% url "api_gps_location_update" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Location sent successfully');
+        } else {
+            console.error('Error sending location:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Network error:', error);
+    });
+}
+
+// Live Map Functions
+function toggleLiveMap() {
+    const mapElement = document.getElementById('live-location-map');
+    const placeholder = document.getElementById('map-placeholder');
+    const toggleBtn = document.getElementById('map-toggle-btn');
+    
+    if (mapElement.style.display === 'none' || mapElement.style.display === '') {
+        // Show map
+        mapElement.style.display = 'block';
+        placeholder.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash me-2"></i>Hide Map';
+        
+        // Initialize map if not already done
+        if (!liveMap) {
+            initializeLiveMap();
+        }
+    } else {
+        // Hide map
+        mapElement.style.display = 'none';
+        placeholder.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-map me-2"></i>Load Map';
+    }
+}
+
+function initializeLiveMap() {
+    const mapContainer = document.getElementById('live-location-map');
+    
+    if (!currentLiveLocation) {
+        mapContainer.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="fas fa-exclamation-triangle me-2"></i>Location data not available yet. Update location first!</div>';
+        return;
+    }
+    
+    // Load Leaflet CSS and JavaScript dynamically
+    if (!document.querySelector('script[src*="leaflet"]')) {
+        const leafletCSS = document.createElement('link');
+        leafletCSS.rel = 'stylesheet';
+        leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(leafletCSS);
+        
+        const leafletJS = document.createElement('script');
+        leafletJS.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        document.head.appendChild(leafletJS);
+        
+        leafletJS.onload = function() {
+            initLiveLeafletMap();
+        };
+    } else {
+        initLiveLeafletMap();
+    }
+}
+
+function initLiveLeafletMap() {
+    const mapContainer = document.getElementById('live-location-map');
+    
+    // Initialize Leaflet map for live tracking
+    if (typeof L !== 'undefined' && currentLiveLocation) {
+        liveMap = L.map('live-location-map').setView([currentLiveLocation.latitude, currentLiveLocation.longitude], 15);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(liveMap);
+        
+        // Add marker for current location
+        liveMapMarker = L.marker([currentLiveLocation.latitude, currentLiveLocation.longitude])
+            .addTo(liveMap)
+            .bindPopup('<b>Your Live Location</b><br>Last updated: ' + new Date().toLocaleTimeString())
+            .openPopup();
+        
+        // Add accuracy circle
+        if (currentLiveLocation.accuracy <= 1000) {
+            L.circle([currentLiveLocation.latitude, currentLiveLocation.longitude], {
+                color: 'red',
+                fillColor: '#ff0000',
+                fillOpacity: 0.2,
+                radius: currentLiveLocation.accuracy
+            }).addTo(liveMap);
+        }
+    }
+}
+
+function updateLiveMap(location) {
+    if (liveMap && liveMapMarker && location) {
+        // Move the marker to new location
+        liveMapMarker.setLatLng([location.latitude, location.longitude]);
+        liveMapMarker.bindPopup('<b>Your Live Location</b><br>Updated: ' + new Date().toLocaleTimeString());
+        
+        // Re-center the map
+        liveMap.setView([location.latitude, location.longitude]);
+        
+        // Update accuracy circle
+        liveMap.eachLayer(function(layer) {
+            if (layer instanceof L.Circle) {
+                map.removeLayer(layer);
+            }
+        });
+        
+        if (location.accuracy <= 1000) {
+            L.circle([location.latitude, location.longitude], {
+                color: 'red',
+                fillColor: '#ff0000',
+                fillOpacity: 0.2,
+                radius: location.accuracy
+            }).addTo(liveMap);
+        }
+    }
+}
+
+// Auto-refresh every 5 minutes
+setInterval(updateLocation, 300000);
+</script>
+{% endblock %}

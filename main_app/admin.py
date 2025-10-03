@@ -21,7 +21,6 @@ admin.site.register(Order)
 admin.site.register(OrderItem)
 admin.site.register(JobCard)
 admin.site.register(JobCardAction)
-admin.site.register(StaffScoresDaily)
 admin.site.register(CommunicationLog)
 admin.site.register(Targets)
 
@@ -45,3 +44,24 @@ admin.site.register(RateAlert)
 admin.site.register(CityWeekdayPlan)
 admin.site.register(Notification)
 admin.site.register(AIProcessingLog)
+
+# Location tracking models
+admin.site.register(LocationSession)
+admin.site.register(WorkLocation)
+admin.site.register(UserStatus)
+
+# Attendance and performance tracking models
+admin.site.register(EmployeeGPSAttendance)
+admin.site.register(StaffScoresDaily)
+
+# Task management models
+admin.site.register(EmployeeTask)
+admin.site.register(JobCardComment)
+admin.site.register(JobCardTimeLog)
+
+# GPS tracking models
+admin.site.register(GPSTrack)
+admin.site.register(GPSCheckIn)
+admin.site.register(EmployeeGeofence)
+admin.site.register(GPSRoute)
+admin.site.register(GPSSession)

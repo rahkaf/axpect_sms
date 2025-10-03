@@ -8,14 +8,14 @@ from django.db.models import Q, Sum, Count
 from datetime import datetime, timedelta
 from main_app.models import (
     CustomUser, Employee, Customer, JobCard, JobCardAction,
-    Order, OrderItem, Payment, Attendance, StaffScoresDaily,
+    Order, OrderItem, Payment, Attendance,
     CommunicationLog, City, Item, Notification
 )
 from .serializers import (
     LoginSerializer, UserSerializer, AttendanceSerializer,
     CitySerializer, CustomerSerializer, JobCardSerializer,
     JobCardActionSerializer, OrderSerializer, OrderItemSerializer,
-    PaymentSerializer, StaffScoresDailySerializer, CommunicationLogSerializer,
+    PaymentSerializer, CommunicationLogSerializer,
     NotificationSerializer, ItemSerializer
 )
 import json

@@ -1,0 +1,628 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .analytics-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .analytics-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #28a745;
+    }
+    
+    .metric-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+    
+    .metric-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .metric-value {
+        font-size: 2em;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .chart-container {
+        background: #f8f9fa;
+        border-radius: 8px;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    
+    .employee-analytics-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #007bff;
+    }
+    
+    .progress-bar-custom {
+        height: 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    .filter-section {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .location-usage-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #ffc107;
+    }
+    
+    .no-data-message {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+    
+    .no-data-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+        opacity: 0.3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="analytics-card">
+                <div class="analytics-header">
+                    <h3 class="mb-2">
+                        <i class="fas fa-analytics me-2"></i>
+                        Location Analytics & Insights
+                    </h3>
+                    <p class="mb-0 opacity-75">
+                        Comprehensive analysis of personnel location data and performance metrics.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="filter-section">
+                <h5 class="mb-3">
+                    <i class="fas fa-filter me-2 text-primary"></i>
+                    Analytics Filters
+                </h5>
+                <form>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="time_period">Time Period:</label>
+                                <select id="time_period" class="form-control">
+                                    <option value="7">Last 7 Days</option>
+                                    <option value="30" selected>Last 30 Days</option>
+                                    <option value="90">Last 90 Days</option>
+                                    <option value="year">This Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="department_filter">Department:</label>
+                                <select id="department_filter" class="form-control">
+                                    <option value="">All Departments</option>
+                                    {% for dept in top_departments %}
+                                        <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="location_filter">Location:</label>
+                                <select id="location_filter" class="form-control">
+                                    <option value="">All Locations</option>
+                                    <option value="office">Office Locations</option>
+                                    <option value="field">Field Work</option>
+                                    <option value="remote">Remote Work</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="button" onclick="applyFilters()" class="btn btn-primary w-100">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Update Analytics
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-sign-in-alt"></i>
+                    </div>
+                </div>
+                <div class="metric-value text-primary">{{ total_checkins|default:"0" }}</div>
+                <div class="metric-label">Total Check-ins</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                </div>
+                <div class="metric-value text-success">{{ avg_hours|default:"0"|floatformat:1 }}h</div>
+                <div class="metric-label">Avg Daily Hours</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                </div>
+                <div class="metric-value text-info">{{ current_checkins|default:"0" }}</div>
+                <div class="metric-label">Currently Active</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <div class="metric-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                </div>
+                <div class="metric-value text-warning">{{ avg_checkout_duration|default:"0"|floatformat:0 }}%</div>
+                <div class="metric-label">Completion Rate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Charts -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="manager-gps-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-chart-area me-2 text-primary"></i>
+                        Attendance Trends
+                    </h5>
+                    <canvas id="attendanceTrendsChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="manager-gps-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-chart-pie me-2 text-primary"></i>
+                        Department Distribution
+                    </h5>
+                    <canvas id="departmentChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Location Usage Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="manager-gps-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i>
+                        Location Usage Breakdown
+                    </h5>
+                    <canvas id="locationUsageChart" width="400" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Performers -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3">
+                <i class="fas fa-star me-2 text-warning"></i>
+                Top Performing Employees
+            </h5>
+            
+            {% if active_employees %}
+                {% for employee in active_employees %}
+                    <div class="employee-analytics-card">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <strong>{{ employee.admin.first_name }} {{ employee.admin.last_name }}</strong><br>
+                                <small class="text-muted">{{ employee.department.name|default:"No Department" }}</small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong class="text-primary">{{ employee.checkin_count|default:"0" }}</strong><br>
+                                <small class="text-muted">Check-ins</small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong class="text-success">
+                                    {% if employee.avg_duration %}
+                                        {{ employee.avg_duration|floatformat:1 }}h
+                                    {% else %}
+                                        0h
+                                    {% endif %}
+                                </strong><br>
+                                <small class="text-muted">Avg Duration</small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong class="text-info">{{ employee.location_count|default:"0" }}</strong><br>
+                                <small class="text-muted">GPS Points</small>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="progress-bar-custom">
+                                    {% with max_checkins=active_employees.0.checkin_count %}
+                                        <div class="progress-fill" style="width: {% if employee.checkin_count and max_checkins %}{% widthratio employee.checkin_count max_checkins 100 %}{% else %}0{% endif %}%"></div>
+                                    {% endwith %}
+                                </div>
+                                <small class="text-muted">Relative Performance</small>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-data-message">
+                    <div class="no-data-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h4>No Performance Data</h4>
+                    <p class="mb-4">No employee performance data available for the selected time period. Start tracking GPS attendance to see analytics here!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Location Usage -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3">
+                <i class="fas fa-map-marker-alt me-2 text-info"></i>
+                Location Usage Analysis
+            </h5>
+            
+            <div class="location-usage-card">
+                <h6><i class="fas fa-building me-2"></i>Office Locations</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>{{ office_checkins|default:"0" }}</strong><br>
+                        <small class="text-muted">Office Check-ins</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>
+                            {% if office_checkins and total_checkins and total_checkins > 0 %}
+                                {% widthratio office_checkins total_checkins 100 %}%
+                            {% else %}
+                                0% 
+                            {% endif %}
+                        </strong><br>
+                        <small class="text-muted">of Total</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="progress-bar-custom">
+                            <div class="progress-fill bg-info" style="width: {% if total_checkins > 0 %}{% widthratio office_checkins total_checkins 100 %}{% else %}0{% endif %}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="location-usage-card">
+                <h6><i class="fas fa-road me-2"></i>Field Work</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>{{ field_checkins|default:"0" }}</strong><br>
+                        <small class="text-muted">Field Check-ins</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>
+                            {% if field_checkins and total_checkins and total_checkins > 0 %}
+                                {% widthratio field_checkins total_checkins 100 %}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </strong><br>
+                        <small class="text-muted">of Total</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="progress-bar-custom">
+                            <div class="progress-fill bg-success" style="width: {% if total_checkins > 0 %}{% widthratio field_checkins total_checkins 100 %}{% else %}0{% endif %}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="location-usage-card">
+                <h6><i class="fas fa-home me-2"></i>Remote Work</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>{{ remote_checkins|default:"0" }}</strong><br>
+                        <small class="text-muted">Remote Check-ins</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>
+                            {% if remote_checkins and total_checkins and total_checkins > 0 %}
+                                {% widthratio remote_checkins total_checkins 100 %}%
+                            {% else %}
+                                0%
+                            {% endif %}
+                        </strong><br>
+                        <small class="text-muted">of Total</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="progress-bar-custom">
+                            <div class="progress-fill bg-warning" style="width: {% if total_checkins > 0 %}{% widthratio remote_checkins total_checkins 100 %}{% else %}0{% endif %}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Section -->
+    <div class="row">
+        <div class="col-12 text-center">
+            <div class="analytics-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-download me-2 text-success"></i>
+                    Export Analytics Data
+                </h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <button onclick="exportData('csv')" class="btn btn-outline-success w-100">
+                            <i class="fas fa-file-csv me-2"></i>
+                            Export CSV
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button onclick="exportData('excel')" class="btn btn-outline-danger w-100">
+                            <i class="fas fa-file-excel me-2"></i>
+                            Export Excel
+                        </button>
+                    </div>
+                    <div class="col-md-4">
+                        <button onclick="exportData('pdf')" class="btn btn-outline-danger w-100">
+                            <i class="fas fa-file-pdf me-2"></i>
+                            Export PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const timePeriod = document.getElementById('time_period').value;
+    const department = document.getElementById('department_filter').value;
+    const location = document.getElementById('location_filter').value;
+    
+    // Show loading state
+    showLoadingState();
+    
+    // Build URL with filters
+    const params = new URLSearchParams();
+    if (timePeriod) params.append('time_period', timePeriod);
+    if (department) params.append('department_filter', department);
+    if (location) params.append('location_filter', location);
+    
+    // Reload page with filters
+    window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function exportData(format) {
+    const timePeriod = document.getElementById('time_period').value;
+    const department = document.getElementById('department_filter').value;
+    const location = document.getElementById('location_filter').value;
+    
+    // Build export URL with current filters
+    const params = new URLSearchParams();
+    params.append('export', format);
+    if (timePeriod) params.append('time_period', timePeriod);
+    if (department) params.append('department_filter', department);
+    if (location) params.append('location_filter', location);
+    
+    // Create download link
+    const exportUrl = '{% url "admin_location_analytics" %}?' + params.toString();
+    window.open(exportUrl, '_blank');
+}
+
+function showLoadingState() {
+    // Show loading indicator
+    const charts = document.querySelectorAll('.chart-container');
+    charts.forEach(chart => {
+        chart.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p>Loading analytics...</p></div>';
+    });
+}
+
+function initializeAnalytics() {
+    // Parse chart data from Django context
+    const chartData = JSON.parse('{{ chart_data|escapejs }}');
+    
+    // Initialize Attendance Trends Chart
+    const attendanceCtx = document.getElementById('attendanceTrendsChart').getContext('2d');
+    new Chart(attendanceCtx, {
+        type: 'line',
+        data: {
+            labels: chartData.attendance_trends.labels,
+            datasets: [{
+                label: 'Daily Check-ins',
+                data: chartData.attendance_trends.data,
+                borderColor: 'rgb(102, 126, 234)',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // Initialize Department Distribution Chart
+    const deptCtx = document.getElementById('departmentChart').getContext('2d');
+    new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+            labels: chartData.department_distribution.labels,
+            datasets: [{
+                data: chartData.department_distribution.data,
+                backgroundColor: [
+                    '#667eea', '#764ba2', '#f093fb', '#f5576c',
+                    '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+                    '#ffecd2', '#fcb69f'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Initialize Location Usage Chart
+    const locationCtx = document.getElementById('locationUsageChart').getContext('2d');
+    new Chart(locationCtx, {
+        type: 'bar',
+        data: {
+            labels: chartData.location_usage.labels,
+            datasets: [{
+                label: 'Check-ins',
+                data: chartData.location_usage.data,
+                backgroundColor: ['#17a2b8', '#28a745', '#ffc107'],
+                borderColor: ['#138496', '#1e7e34', '#e0a800'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    console.log('Analytics charts initialized');
+}
+
+// Auto-refresh analytics every 60 seconds
+setInterval(function() {
+    console.log('Refreshing analytics data...');
+    // This would refresh data without reloading the page
+}, 60000);
+
+// Load Chart.js library
+if (!window.Chart) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = function() {
+        initializeAnalytics();
+    };
+    document.head.appendChild(script);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeAnalytics();
+    });
+}
+</script>
+{% endblock %}

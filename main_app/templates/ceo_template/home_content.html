@@ -111,130 +111,7 @@
                 </div>
             <!-- right col -->
         </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card card-success">
-                    <div class="card-header">
-                        <h3 class="card-title">Today's Points Leaderboard</h3>
-                        <div class="card-tools">
-                          <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th style="width: 10px">#</th>
-                                    <th>Employee</th>
-                                    <th style="width: 100px" class="text-right">Points</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in leaderboard %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
-                                    <td>{{ row.name }}</td>
-                                    <td class="text-right"><span class="badge bg-success">{{ row.points }}</span></td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="3" class="text-center text-muted">No data for today yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
         
-        <!-- GPS Attendance Summary -->
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card card-info">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-map-marker-alt"></i> Today's GPS Attendance Summary ({{ today|date:"F d, Y" }})
-                        </h3>
-                        <div class="card-tools">
-                            <a href="{% url 'admin_gps_attendance_dashboard' %}" class="btn btn-tool btn-sm">
-                                <i class="fas fa-external-link-alt"></i> View Full Dashboard
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="info-box bg-success">
-                                    <span class="info-box-icon"><i class="fas fa-check-circle"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Checked In</span>
-                                        <span class="info-box-number">{{ gps_attendance_summary.checked_in }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="info-box bg-warning">
-                                    <span class="info-box-icon"><i class="fas fa-clock"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Completed</span>
-                                        <span class="info-box-number">{{ gps_attendance_summary.checked_out }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="info-box bg-danger">
-                                    <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Not Marked</span>
-                                        <span class="info-box-number">{{ gps_attendance_summary.not_marked }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="info-box bg-info">
-                                    <span class="info-box-icon"><i class="fas fa-business-time"></i></span>
-                                    <div class="info-box-content">
-                                        <span class="info-box-text">Total Hours</span>
-                                        <span class="info-box-number">{{ gps_attendance_summary.total_hours|floatformat:1 }}h</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="card card-secondary">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-clock"></i> Recent Check-ins
-                        </h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <ul class="list-group list-group-flush">
-                            {% for checkin in gps_attendance_summary.recent_checkins %}
-                            <li class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ checkin.name }}</strong>
-                                        <br>
-                                        <small class="text-muted">{{ checkin.department }}</small>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="badge badge-success">{{ checkin.time|time:"H:i" }}</span>
-                                    </div>
-                                </div>
-                            </li>
-                            {% empty %}
-                            <li class="list-group-item text-center text-muted">
-                                <i class="fas fa-info-circle"></i> No check-ins yet today
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
         
         <div class="row">
             <div class="col-md-12">
@@ -245,7 +122,6 @@
                     <div class="card-body">
                         <button id="runCadence" class="btn btn-primary">Run Monthly Cadence (Create Follow-ups)</button>
                         <span id="cadenceResult" class="ml-3 text-muted"></span>
-                        <a href="{% url 'export_daily_scores_csv' %}" class="btn btn-default ml-3">Download Today's Scores (CSV)</a>
                     </div>
                 </div>
             </div>

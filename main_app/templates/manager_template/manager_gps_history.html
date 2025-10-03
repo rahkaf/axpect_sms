@@ -1,0 +1,483 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .manager-history-card {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        background: white;
+    }
+    
+    .manager-history-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .filter-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #28a745;
+    }
+    
+    .history-item {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #17a2b8;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .history-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .history-item.completed {
+        border-left-color: #28a745;
+    }
+    
+    .history-item.incomplete {
+        border-left-color: #ffc107;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+    
+    .badge-completed {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-active {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .badge-incomplete {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .duration-display {
+        font-size: 1.1em;
+        font-weight: 600;
+        color: #28a745;
+    }
+    
+    .time-display {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .summary-text {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 10px;
+        font-style: italic;
+    }
+    
+    .no-data-message {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+    
+    .no-data-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2em;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 0.9em;
+        opacity: 0.9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="manager-history-card">
+                <div class="manager-history-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-0">
+                                <i class="fas fa-history me-2"></i>
+                                My GPS Attendance History
+                            </h4>
+                            <p class="mb-0 mt-1 opacity-75">
+                                Track your supervision attendance and work patterns
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{% url 'manager_gps_attendance' %}" class="btn btn-light">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="filter-card">
+                <h5 class="mb-3">
+                    <i class="fas fa-filter me-2 text-primary"></i>
+                    Filter History
+                </h5>
+                <form method="GET" action="{% url 'manager_gps_history' %}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="start_date">Start Date:</label>
+                                <input type="date" id="start_date" name="start_date" class="form-control" 
+                                       value="{{ start_date|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="end_date">End Date:</label>
+                                <input type="date" id="end_date" name="end_date" class="form-control" 
+                                       value="{{ end_date|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="employee_id">Employee:</label>
+                                <select id="employee_id" name="employee_id" class="form-control">
+                                    <option value="">All Employees</option>
+                                    {% for employee in team_employees %}
+                                        <option value="{{ employee.id }}" 
+                                                {% if employee_filter == employee.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ employee.admin.first_name }} {{ employee.admin.last_name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-search me-2"></i>
+                                    Filter Results
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Quick Stats -->
+            <div class="stats-card">
+                <div class="stat-value">{{ checkins.count }}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History List -->
+    <div class="row">
+        <div class="col-12">
+            {% if checkins %}
+                {% for checkin in checkins %}
+                    <div class="history-item {% if checkin.check_out_time %}completed{% else %}incomplete{% endif %}">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <div class="time-display">
+                                    <i class="fas fa-calendar-day me-2 text-primary"></i>
+                                    {{ checkin.check_in_time|date:"F d, Y" }}
+                                </div>
+                                <div class="mt-1">
+                                    <small class="text-muted">{{ checkin.check_in_time|date:"l" }}</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <div class="time-display text-success">
+                                    <i class="fas fa-sign-in-alt me-1"></i>
+                                    {{ checkin.check_in_time|date:"g:i A" }}
+                                </div>
+                                <small class="text-muted">Check-in</small>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                {% if checkin.check_out_time %}
+                                    <div class="time-display text-danger">
+                                        <i class="fas fa-sign-out-alt me-1"></i>
+                                        {{ checkin.check_out_time|date:"g:i A" }}
+                                    </div>
+                                    <small class="text-muted">Check-out</small>
+                                {% else %}
+                                    <div class="text-warning">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Still Active
+                                    </div>
+                                    <small class="text-muted">In progress</small>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-2">
+                                {% if checkin.duration_hours %}
+                                    <div class="duration-display">
+                                        <i class="fas fa-hourglass-half me-1"></i>
+                                        {{ checkin.duration_hours|floatformat:1 }}h
+                                    </div>
+                                    <small class="text-muted">Duration</small>
+                                {% else %}
+                                    <div class="text-muted">
+                                        <i class="fas fa-minus me-1"></i>
+                                        Calculating...
+                                    </div>
+                                    <small class="text-muted">Duration</small>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-3 text-end">
+                                {% if checkin.check_out_time %}
+                                    <span class="status-badge badge-completed">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        Completed
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge badge-active">
+                                        <i class="fas fa-play-circle me-1"></i>
+                                        Active Session
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Employee Information -->
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="employee-info" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong><i class="fas fa-user me-1 text-primary"></i>Employee:</strong><br>
+                                            <span>{{ checkin.employee.admin.first_name }} {{ checkin.employee.admin.last_name }}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong><i class="fas fa-building me-1 text-info"></i>Department:</strong><br>
+                                            <span>{{ checkin.employee.department.name|default:"Not assigned" }}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong><i class="fas fa-briefcase me-1 text-success"></i>Work Summary:</strong><br>
+                                            <span>{{ checkin.work_summary|default:"No summary provided"|truncatechars:50 }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Information -->
+                        <div class="row mt-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <strong><i class="fas fa-map-marker-alt me-1 text-info"></i>Check-in Location:</strong><br>
+                                    <small class="text-muted">{{ checkin.check_in_address|default:"Location not available" }}</small>
+                                </div>
+                            </div>
+                            {% if checkin.check_out_time and checkin.check_out_address %}
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <strong><i class="fas fa-map-marker-alt me-1 text-warning"></i>Check-out Location:</strong><br>
+                                        <small class="text-muted">{{ checkin.check_out_address }}</small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Work Summary -->
+                        {% if checkin.work_summary %}
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <strong><i class="fas fa-clipboard-list me-1 text-success"></i>Supervision Summary:</strong>
+                                    <div class="summary-text">
+                                        {{ checkin.work_summary }}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Action Buttons -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="btn-group" role="group">
+                                    {% if checkin.check_in_latitude and checkin.check_in_longitude %}
+                                        <button onclick="viewOnMap({{ checkin.check_in_latitude|floatformat:6 }}, {{ checkin.check_in_longitude|floatformat:6 }})" 
+                                                class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-map me-1"></i>
+                                            View on Map
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                                            <i class="fas fa-map me-1"></i>
+                                            No Location Data
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% if not checkin.check_out_time %}
+                                        <a href="{% url 'manager_gps_checkout' %}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-sign-out-alt me-1"></i>
+                                            Complete Check-out
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <button onclick="exportSession('{{ checkin.id }}')" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-download me-1"></i>
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                <!-- Pagination would go here if needed -->
+                {% if checkins.count >= 50 %}
+                    <div class="text-center mt-4">
+                        <p class="text-muted">Showing latest 50 records. Use date filters to view specific periods.</p>
+                    </div>
+                {% endif %}
+                
+            {% else %}
+                <div class="no-data-message">
+                    <div class="no-data-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h4>No Attendance History</h4>
+                    <p class="mb-4">
+                        {% if start_date or end_date %}
+                            No GPS attendance records found for the selected date range.
+                        {% else %}
+                            You haven't started using GPS attendance tracking yet.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'manager_gps_checkin' %}" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-2"></i>
+                        Start Your First Check-in
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Map Modal -->
+<div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalLabel">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Supervision Location
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="map-container" style="height: 400px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <div class="text-center">
+                        <i class="fas fa-map fa-3x mb-3 text-muted"></i>
+                        <p class="text-muted">Map integration would be implemented here</p>
+                        <p class="text-muted">Coordinates: <span id="map-coordinates"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="openInGoogleMaps()">
+                    <i class="fas fa-external-link-alt me-2"></i>
+                    Open in Google Maps
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentMapCoords = null;
+
+function viewOnMap(lat, lng) {
+    currentMapCoords = { lat: lat, lng: lng };
+    document.getElementById('map-coordinates').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
+    
+    // Show modal
+    const mapModal = new bootstrap.Modal(document.getElementById('mapModal'));
+    mapModal.show();
+}
+
+function openInGoogleMaps() {
+    if (currentMapCoords) {
+        const url = 'https://www.google.com/maps?q=' + currentMapCoords.lat + ',' + currentMapCoords.lng;
+        window.open(url, '_blank');
+    }
+}
+
+function exportSession(checkinId) {
+    // This would export the specific session data
+    const exportUrl = '{% url "manager_gps_history" %}?export=csv&session=' + checkinId;
+    window.open(exportUrl, '_blank');
+}
+
+// Auto-set end date to today if start date is selected
+document.getElementById('start_date').addEventListener('change', function() {
+    const endDateInput = document.getElementById('end_date');
+    if (this.value && !endDateInput.value) {
+        endDateInput.value = new Date().toISOString().split('T')[0];
+    }
+});
+
+// Set default date range to last 30 days if no filters applied
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    
+    if (!startDateInput.value && !endDateInput.value) {
+        const today = new Date();
+        const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+        
+        endDateInput.value = today.toISOString().split('T')[0];
+        startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
+    }
+});
+</script>
+{% endblock %}

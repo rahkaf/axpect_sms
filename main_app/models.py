@@ -5,6 +5,7 @@ from django.db.models.signals import post_save
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 
 
 
@@ -97,12 +98,6 @@ class Employee(models.Model):
 class Attendance(models.Model):
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING)
     date = models.DateField()
-    # New fields for PRD GPS-based check-in/out and working city
-    start_ts = models.DateTimeField(null=True, blank=True)
-    end_ts = models.DateTimeField(null=True, blank=True)
-    start_gps = models.CharField(max_length=120, blank=True)
-    end_gps = models.CharField(max_length=120, blank=True)
-    working_city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True, blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -303,17 +298,6 @@ class JobCardAction(models.Model):
         return f"{self.action} on {self.jobcard} by {self.actor}"
 
 
-class StaffScoresDaily(models.Model):
-    staff = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    date = models.DateField()
-    jobs_completed = models.IntegerField(default=0)
-    orders_count = models.IntegerField(default=0)
-    bales_total = models.FloatField(default=0)
-    payments_count = models.IntegerField(default=0)
-    points = models.FloatField(default=0)
-
-    class Meta:
-        unique_together = ("staff", "date")
 
 
 class CommunicationLog(models.Model):
@@ -493,69 +477,6 @@ class AIProcessingLog(models.Model):
     processed_at = models.DateTimeField(null=True, blank=True)
 
 
-class EmployeeGPSAttendance(models.Model):
-    """Individual employee GPS-based attendance tracking"""
-    RATING_CHOICES = [
-        (1, '1 Star - Poor'),
-        (2, '2 Stars - Below Average'),
-        (3, '3 Stars - Average'),
-        (4, '4 Stars - Good'),
-        (5, '5 Stars - Excellent'),
-    ]
-    
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    date = models.DateField()
-    
-    # Check-in details
-    checkin_time = models.DateTimeField(null=True, blank=True)
-    checkin_gps = models.CharField(max_length=120, blank=True)
-    
-    # Check-out details
-    checkout_time = models.DateTimeField(null=True, blank=True)
-    checkout_gps = models.CharField(max_length=120, blank=True)
-    
-    # Work notes and additional info
-    work_notes = models.TextField(blank=True)
-    working_city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True, blank=True)
-    
-    # Performance rating (1-5 stars)
-    performance_rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True)
-    rating_given_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='ratings_given')
-    rating_date = models.DateTimeField(null=True, blank=True)
-    rating_comments = models.TextField(blank=True)
-    
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        unique_together = ('employee', 'date')
-        ordering = ['-date', '-checkin_time']
-    
-    def __str__(self):
-        return f"{self.employee} - {self.date}"
-    
-    @property
-    def is_checked_in(self):
-        return self.checkin_time is not None
-    
-    @property
-    def is_checked_out(self):
-        return self.checkout_time is not None
-    
-    @property
-    def hours_worked(self):
-        if self.checkin_time and self.checkout_time:
-            time_diff = self.checkout_time - self.checkin_time
-            return round(time_diff.total_seconds() / 3600, 2)
-        return 0
-    
-    @property
-    def rating_stars(self):
-        """Return star display for rating"""
-        if self.performance_rating:
-            return '★' * self.performance_rating + '☆' * (5 - self.performance_rating)
-        return 'Not Rated'
 
 
 class EmployeeTask(models.Model):
@@ -805,178 +726,285 @@ class JobCardTimeLog(models.Model):
         return f"Time log for {self.job_card.job_card_number} - {self.hours_worked}h"
 
 
-class GPSLocationHistory(models.Model):
-    """Track GPS location history for route visualization"""
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='gps_history')
-    latitude = models.DecimalField(max_digits=10, decimal_places=8)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8)
-    accuracy = models.FloatField(null=True, blank=True, help_text="GPS accuracy in meters")
-    altitude = models.FloatField(null=True, blank=True, help_text="Altitude in meters")
-    speed = models.FloatField(null=True, blank=True, help_text="Speed in km/h")
-    heading = models.FloatField(null=True, blank=True, help_text="Direction in degrees")
+
+
+# Location Tracking Models
+class LocationSession(models.Model):
+    """Tracks user location sessions during work hours"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='location_sessions')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    location_name = models.CharField(max_length=200, blank=True)
+    location_address = models.CharField(max_length=500, blank=True)
+    checkin_time = models.DateTimeField(auto_now_add=True)
+    checkout_time = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    notes = models.CharField(max_length=500, blank=True)
+    accuracy = models.FloatField(null=True, blank=True, help_text='GPS accuracy in meters')
     
-    # Location context
-    address = models.CharField(max_length=500, blank=True, help_text="Reverse geocoded address")
-    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True)
+    class Meta:
+        ordering = ['-checkin_time'] 
     
-    # Time tracking
+    @property
+    def duration(self):
+        """Calculate total duration of session"""
+        if self.checkout_time:
+            return self.checkout_time - self.checkin_time
+        return None
+    
+    @property
+    def is_current_session(self):
+        """Check if this is the user's current active session"""
+        return self.is_active and self.checkout_time is None
+    
+    def __str__(self):
+        return f'{self.user.get_full_name()} - {self.location_name or "Unknown Location"}'
+
+
+class WorkLocation(models.Model):
+    """Defines approved work locations with geofencing"""
+    name = models.CharField(max_length=200)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    radius_meters = models.IntegerField(default=100, help_text='Geofencing radius in meters')
+    address = models.CharField(max_length=500, blank=True)
+    is_active = models.BooleanField(default=True)
+    department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class UserStatus(models.Model):
+    """Current status of users - tracks checkin state"""
+    STATUS_CHOICES = [
+        ('online', 'Online'),
+        ('idle', 'Idle'),
+        ('offline', 'Offline'),
+    ]
+    
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    is_checked_in = models.BooleanField(default=False)
+    current_session = models.ForeignKey(LocationSession, null=True, blank=True, on_delete=models.SET_NULL)
+    status_type = models.CharField(max_length=10, choices=STATUS_CHOICES, default='offline')
+    last_activity = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f'{self.user.get_full_name()} - {self.status_type}'
+
+
+class EmployeeGPSAttendance(models.Model):
+    """GPS-based attendance tracking for employees"""
+    PERFORMANCE_CHOICES = [
+        (1, '1 Star - Poor'),
+        (2, '2 Stars - Below Average'),
+        (3, '3 Stars - Average'),
+        (4, '4 Stars - Good'),
+        (5, '5 Stars - Excellent'),
+    ]
+    
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    date = models.DateField()
+    checkin_time = models.DateTimeField(blank=True, null=True)
+    checkin_gps = models.CharField(blank=True, max_length=120)
+    checkout_time = models.DateTimeField(blank=True, null=True)
+    checkout_gps = models.CharField(blank=True, max_length=120)
+    work_notes = models.TextField(blank=True)
+    performance_rating = models.IntegerField(blank=True, choices=PERFORMANCE_CHOICES, null=True)
+    rating_date = models.DateTimeField(blank=True, null=True)
+    rating_comments = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['employee', 'date']
+        ordering = ['-date']
+    
+    def __str__(self):
+        return f'{self.employee.admin.first_name} - {self.date}'
+
+
+class StaffScoresDaily(models.Model):
+    """Daily staff performance scores and statistics"""
+    staff = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    date = models.DateField()
+    jobs_completed = models.IntegerField(default=0)
+    orders_count = models.IntegerField(default=0)
+    bales_total = models.FloatField(default=0)
+    payments_count = models.IntegerField(default=0)
+    points = models.FloatField(default=0)
+    
+    class Meta:
+        unique_together = ['staff', 'date']
+        ordering = ['-date']
+    
+    def __str__(self):
+        return f'{self.staff.admin.first_name} - {self.date} ({self.points} pts)'
+
+
+# ==================================================
+# GPS Tracking & Attendance Models
+# ==================================================
+
+class GPSTrack(models.Model):
+    """Real-time GPS tracking data for employees"""
+    STATUS_CHOICES = [
+        ('CHECKED_IN', 'Checked In'),
+        ('CHECKED_OUT', 'Checked Out'),
+        ('ON_BREAK', 'On Break'),
+        ('WORKING', 'Working'),
+    ]
+    
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='gps_tracks')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    accuracy = models.FloatField(null=True, blank=True, help_text='GPS accuracy in meters')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='WORKING')
+    address = models.CharField(max_length=500, blank=True, help_text='Reverse geocoded address')
+    speed = models.FloatField(null=True, blank=True, help_text='Speed in km/h')
+    heading = models.FloatField(null=True, blank=True, help_text='Direction in degrees')
+    battery_level = models.IntegerField(null=True, blank=True, help_text='Device battery percentage')
+    is_active = models.BooleanField(default=True)
     timestamp = models.DateTimeField(auto_now_add=True)
-    date = models.DateField(auto_now_add=True)
-    
-    # Activity context
-    activity_type = models.CharField(max_length=50, choices=[
-        ('checkin', 'Check In'),
-        ('checkout', 'Check Out'),
-        ('traveling', 'Traveling'),
-        ('stationary', 'Stationary'),
-        ('meeting', 'Meeting'),
-        ('break', 'Break'),
-        ('other', 'Other')
-    ], default='traveling')
-    
-    # Performance tracking
-    time_spent_minutes = models.IntegerField(default=0, help_text="Time spent at this location in minutes")
     
     class Meta:
         ordering = ['-timestamp']
         indexes = [
-            models.Index(fields=['employee', 'date']),
+            models.Index(fields=['employee', 'timestamp']),
             models.Index(fields=['timestamp']),
-            models.Index(fields=['date']),
         ]
     
     def __str__(self):
-        return f"{self.employee} - {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}"
-    
-    @property
-    def coordinates(self):
-        return f"{self.latitude},{self.longitude}"
+        return f'{self.employee.admin.first_name} - {self.get_status_display()} at {self.timestamp.strftime("%H:%M")}'
 
 
-class GPSRoute(models.Model):
-    """Daily route summary for employees"""
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='daily_routes')
-    date = models.DateField()
-    
-    # Route statistics
-    total_distance_km = models.FloatField(default=0, help_text="Total distance traveled in km")
-    total_time_minutes = models.IntegerField(default=0, help_text="Total time on route in minutes")
-    start_time = models.DateTimeField(null=True, blank=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    
-    # Route points (stored as JSON for efficiency)
-    route_points = models.JSONField(default=list, help_text="Array of [lat, lng, timestamp] points")
-    
-    # Performance metrics
-    avg_speed_kmh = models.FloatField(default=0, help_text="Average speed in km/h")
-    max_speed_kmh = models.FloatField(default=0, help_text="Maximum speed in km/h")
-    stops_count = models.IntegerField(default=0, help_text="Number of stops made")
-    
-    # Route efficiency
-    efficiency_score = models.FloatField(default=0, help_text="Route efficiency score (0-100)")
-    
-    # Timestamps
+class GPSCheckIn(models.Model):
+    """GPS-based check-in/check-out records"""
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='gps_checkins')
+    check_in_time = models.DateTimeField()
+    check_in_latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    check_in_longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    check_in_address = models.CharField(max_length=500, blank=True)
+    check_out_time = models.DateTimeField(null=True, blank=True)
+    check_out_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_out_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_out_address = models.CharField(max_length=500, blank=True)
+    work_summary = models.TextField(blank=True, help_text='Employee summary of work done')
+    manager_notes = models.TextField(blank=True, help_text='Manager notes on attendance')
+    total_distance_km = models.FloatField(default=0)
+    is_approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        unique_together = ('employee', 'date')
-        ordering = ['-date']
-    
-    def __str__(self):
-        return f"{self.employee} - {self.date} ({self.total_distance_km:.1f}km)"
+        ordering = ['-check_in_time']
+        indexes = [
+            models.Index(fields=['employee', 'check_in_time']),
+            models.Index(fields=['check_in_time']),
+        ]
     
     @property
     def duration_hours(self):
-        if self.start_time and self.end_time:
-            delta = self.end_time - self.start_time
-            return round(delta.total_seconds() / 3600, 2)
-        return 0
+        if self.check_out_time:
+            duration = self.check_out_time - self.check_in_time
+            return round(duration.total_seconds() / 3600, 2)
+        return None
+    
+    @property
+    def status(self):
+        if self.check_out_time:
+            return "Completed"
+        else:
+            return "Active"
+    
+    def __str__(self):
+        return f'{self.employee.admin.first_name} - {self.check_in_time.strftime("%Y-%m-%d")}'
 
 
-class GPSGeofence(models.Model):
-    """Define geofenced areas for attendance and tracking"""
+class EmployeeGeofence(models.Model):
+    """Geofenced areas for employee tracking"""
+    FENCE_TYPE_CHOICES = [
+        ('OFFICE', 'Office'),
+        ('WORK_SITE', 'Work Site'),
+        ('FIELD', 'Field Work'),
+        ('CLIENT', 'Client Location'),
+    ]
+    
     name = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    
-    # Geofence definition
-    center_latitude = models.DecimalField(max_digits=10, decimal_places=8)
-    center_longitude = models.DecimalField(max_digits=11, decimal_places=8)
-    radius_meters = models.IntegerField(help_text="Radius in meters")
-    
-    # Polygon definition (alternative to circle)
-    polygon_points = models.JSONField(null=True, blank=True, help_text="Array of [lat, lng] points for polygon geofence")
-    
-    # Associated entities
+    fence_type = models.CharField(max_length=20, choices=FENCE_TYPE_CHOICES)
+    center_latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    center_longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    radius_meters = models.IntegerField(default=100, help_text='Geofencing radius in meters')
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
-    
-    # Settings
+    allow_checkin = models.BooleanField(default=True)
+    allow_checkout = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
-    allow_checkin = models.BooleanField(default=True, help_text="Allow check-in from this geofence")
-    allow_checkout = models.BooleanField(default=True, help_text="Allow check-out from this geofence")
-    
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    class Meta:
+        ordering = ['name']
+    
     def __str__(self):
-        return self.name
-    
-    @property
-    def center_coordinates(self):
-        return f"{self.center_latitude},{self.center_longitude}"
+        return f'{self.name} ({self.get_fence_type_display()})'
 
 
-class EmployeeLocationSession(models.Model):
-    """Track employee location sessions for performance analysis"""
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='location_sessions')
+class GPSRoute(models.Model):
+    """Track employee routes and movements"""
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='gps_routes')
     date = models.DateField()
-    
-    # Session details
-    session_start = models.DateTimeField()
-    session_end = models.DateTimeField(null=True, blank=True)
-    
-    # Location details
-    start_latitude = models.DecimalField(max_digits=10, decimal_places=8)
-    start_longitude = models.DecimalField(max_digits=11, decimal_places=8)
-    end_latitude = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
-    end_longitude = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
-    
-    # Session context
-    session_type = models.CharField(max_length=50, choices=[
-        ('work', 'Work Session'),
-        ('meeting', 'Meeting'),
-        ('travel', 'Travel'),
-        ('break', 'Break'),
-        ('lunch', 'Lunch'),
-        ('other', 'Other')
-    ], default='work')
-    
-    # Performance data
-    productivity_score = models.FloatField(null=True, blank=True, help_text="Productivity score (0-100)")
-    notes = models.TextField(blank=True)
-    
-    # Geofence tracking
-    geofence = models.ForeignKey(GPSGeofence, on_delete=models.SET_NULL, null=True, blank=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    total_distance_km = models.FloatField(default=0)
+    avg_speed_kmh = models.FloatField(default=0)
+    max_speed_kmh = models.FloatField(default=0)
+    stops_count = models.IntegerField(default=0)
+    efficiency_score = models.FloatField(null=True, blank=True, help_text='Route efficiency score')
+    route_points = models.JSONField(null=True, blank=True, help_text='Stored route coordinates')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['-session_start']
-        indexes = [
-            models.Index(fields=['employee', 'date']),
-            models.Index(fields=['session_start']),
-        ]
+        ordering = ['-date', '-start_time']
+        unique_together = ['employee', 'date']
     
     def __str__(self):
-        return f"{self.employee} - {self.session_type} - {self.session_start.strftime('%Y-%m-%d %H:%M')}"
+        return f'{self.employee.admin.first_name} - {self.date}'
 
-    @property
-    def duration_minutes(self):
-        if self.session_start and self.session_end:
-            delta = self.session_end - self.session_start
-            return round(delta.total_seconds() / 60)
-        return 0
+
+class GPSSession(models.Model):
+    """Active GPS tracking sessions"""
+    SESSION_TYPE_CHOICES = [
+        ('WORK', 'Work Session'),
+        ('FIELD', 'Field Session'),
+        ('MEETING', 'Meeting'),
+        ('TRAVEL', 'Travel'),
+    ]
+    
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='gps_sessions')
+    session_type = models.CharField(max_length=15, choices=SESSION_TYPE_CHOICES)
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    start_latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    start_longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    end_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    end_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    notes = models.TextField(blank=True)
+    productivity_score = models.IntegerField(null=True, blank=True, help_text='Session productivity score (1-10)')
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-start_time']
     
     @property
-    def is_active(self):
-        return self.session_end is None
+    def duration_minutes(self):
+        end_time = self.end_time or timezone.now()
+        duration = end_time - self.start_time
+        return int(duration.total_seconds() / 60)
+    
+    def __str__(self):
+        return f'{self.employee.admin.first_name} - {self.get_session_type_display()}'

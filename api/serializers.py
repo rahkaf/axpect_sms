@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from main_app.models import (
     CustomUser, Employee, Customer, JobCard, JobCardAction, 
-    Order, OrderItem, Payment, Attendance, StaffScoresDaily,
+    Order, OrderItem, Payment, Attendance,
     CommunicationLog, City, Item, Notification
 )
 
@@ -112,13 +112,6 @@ class PaymentSerializer(serializers.ModelSerializer):
                  'method', 'amount', 'notes', 'created_at']
 
 
-class StaffScoresDailySerializer(serializers.ModelSerializer):
-    staff_name = serializers.CharField(source='staff.admin.get_full_name', read_only=True)
-    
-    class Meta:
-        model = StaffScoresDaily
-        fields = ['id', 'staff', 'staff_name', 'date', 'jobs_completed', 
-                 'orders_count', 'bales_total', 'payments_count', 'points']
 
 
 class CommunicationLogSerializer(serializers.ModelSerializer):

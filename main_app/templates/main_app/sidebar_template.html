@@ -137,6 +137,33 @@
                     </a>
                 </li>
 
+                <!-- GPS Tracking Management -->
+                <li class="nav-header">GPS TRACKING</li>
+                
+                <li class="nav-item">
+                    {% url 'admin_gps_dashboard' as admin_gps_dashboard %}
+                    <a href="{{admin_gps_dashboard}}" class="nav-link {% if admin_gps_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marked-alt"></i>
+                        <p>GPS Dashboard</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'admin_location_analytics' as admin_location_analytics %}
+                    <a href="{{admin_location_analytics}}" class="nav-link {% if admin_location_analytics == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>Location Analytics</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'admin_geofence_management' as admin_geofence_management %}
+                    <a href="{{admin_geofence_management}}" class="nav-link {% if admin_geofence_management == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-pin"></i>
+                        <p>Geofence Management</p>
+                    </a>
+                </li>
+
                 <!-- Attendance Management -->
                 <li class="nav-header">ATTENDANCE</li>
                 
@@ -148,29 +175,8 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'admin_gps_attendance_dashboard' as admin_gps_attendance_dashboard %}
-                    <a href="{{admin_gps_attendance_dashboard}}" class="nav-link {% if admin_gps_attendance_dashboard == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-map-marker-alt"></i>
-                        <p>GPS Attendance Dashboard</p>
-                    </a>
-                </li>
+                
 
-                <li class="nav-item">
-                    {% url 'admin_live_gps_map' as admin_live_gps_map %}
-                    <a href="{{admin_live_gps_map}}" class="nav-link {% if admin_live_gps_map == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-map-marked-alt"></i>
-                        <p>Live GPS Map</p>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    {% url 'admin_mark_attendance' as admin_mark_attendance %}
-                    <a href="{{admin_mark_attendance}}" class="nav-link {% if admin_mark_attendance == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-user-check"></i>
-                        <p>Mark My Attendance</p>
-                    </a>
-                </li>
 
                 <!-- Communication -->
                 <li class="nav-header">COMMUNICATION</li>
@@ -314,6 +320,33 @@
                     </a>
                 </li>
 
+                <!-- GPS Tracking -->
+                <li class="nav-header">GPS TRACKING</li>
+                
+                <li class="nav-item">
+                    {% url 'manager_gps_dashboard' as manager_gps_dashboard %}
+                    <a href="{{manager_gps_dashboard}}" class="nav-link {% if manager_gps_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marked-alt"></i>
+                        <p>Team GPS Dashboard</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_employee_locations' as manager_employee_locations %}
+                    <a href="{{manager_employee_locations}}" class="nav-link {% if manager_employee_locations == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marker-alt"></i>
+                        <p>Employee Locations</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manager_attendance_reports' as manager_attendance_reports %}
+                    <a href="{{manager_attendance_reports}}" class="nav-link {% if manager_attendance_reports == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-chart-bar"></i>
+                        <p>GPS Reports</p>
+                    </a>
+                </li>
+
                 <!-- Attendance Management -->
                 <li class="nav-header">ATTENDANCE</li>
                 
@@ -325,21 +358,7 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'manager_gps_attendance_dashboard' as manager_gps_attendance_dashboard %}
-                    <a href="{{manager_gps_attendance_dashboard}}" class="nav-link {% if manager_gps_attendance_dashboard == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-map-marker-alt"></i>
-                        <p>GPS Attendance Dashboard</p>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    {% url 'manager_live_gps_map' as manager_live_gps_map %}
-                    <a href="{{manager_live_gps_map}}" class="nav-link {% if manager_live_gps_map == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-map-marked-alt"></i>
-                        <p>Live GPS Map</p>
-                    </a>
-                </li>
+                
 
                 <li class="nav-item">
                     {% url 'manager_update_attendance' as manager_update_attendance %}
@@ -349,13 +368,6 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'manager_mark_attendance' as manager_mark_attendance %}
-                    <a href="{{manager_mark_attendance}}" class="nav-link {% if manager_mark_attendance == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-user-check"></i>
-                        <p>Mark My Attendance</p>
-                    </a>
-                </li>
 
                 <!-- Communication -->
                 <li class="nav-header">COMMUNICATION</li>
@@ -465,6 +477,41 @@
                     </a>
                 </li>
 
+                <!-- GPS Tracking -->
+                <li class="nav-header">GPS TRACKING</li>
+                
+                <li class="nav-item">
+                    {% url 'employee_gps_dashboard' as employee_gps_dashboard %}
+                    <a href="{{employee_gps_dashboard}}" class="nav-link {% if employee_gps_dashboard == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marked-alt"></i>
+                        <p>GPS Dashboard</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'employee_gps_checkin' as employee_gps_checkin %}
+                    <a href="{{employee_gps_checkin}}" class="nav-link {% if employee_gps_checkin == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-sign-in-alt"></i>
+                        <p>GPS Check-in</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'employee_gps_history' as employee_gps_history %}
+                    <a href="{{employee_gps_history}}" class="nav-link {% if employee_gps_history == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-history"></i>
+                        <p>GPS History</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'employee_live_location' as employee_live_location %}
+                    <a href="{{employee_live_location}}" class="nav-link {% if employee_live_location == request.path %}active{% endif %}">
+                        <i class="nav-icon fas fa-map-marker-alt"></i>
+                        <p>Live Location</p>
+                    </a>
+                </li>
+
                 <!-- Attendance -->
                 <li class="nav-header">ATTENDANCE</li>
                 
@@ -476,21 +523,7 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'employee_gps_attendance' as employee_gps_attendance %}
-                    <a href="{{employee_gps_attendance}}" class="nav-link {% if employee_gps_attendance == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-map-marker-alt"></i>
-                        <p>GPS Attendance</p>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    {% url 'employee_live_gps_map' as employee_live_gps_map %}
-                    <a href="{{employee_live_gps_map}}" class="nav-link {% if employee_live_gps_map == request.path %}active{% endif %}">
-                        <i class="nav-icon fas fa-map-marked-alt"></i>
-                        <p>Live GPS Map</p>
-                    </a>
-                </li>
+                
 
                 <!-- Communication -->
                 <li class="nav-header">COMMUNICATION</li>

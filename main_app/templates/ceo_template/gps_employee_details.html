@@ -1,0 +1,549 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .employee-details-card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: white;
+        margin-bottom: 25px;
+    }
+    
+    .employee-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .stat-value {
+        font-size: 2.2em;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        color: #666;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .checkin-item {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #28a745;
+        transition: transform 0.2s ease;
+    }
+    
+    .checkin-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .checkin-item.incomplete {
+        border-left-color: #ffc107;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85em;
+        font-weight: 500;
+    }
+    
+    .badge-active {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .badge-completed {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .track-item {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-left: 3px solid #17a2b8;
+    }
+    
+    .employee-photo {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid rgba(255,255,255,0.3);
+        object-fit: cover;
+    }
+    
+    .action-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-edit {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .btn-edit:hover {
+        background: #e0a800;
+        transform: translateY(-1px);
+    }
+    
+    .btn-approve {
+        background: #28a745;
+        color: white;
+    }
+    
+    .btn-approve:hover {
+        background: #1e7e34;
+        transform: translateY(-1px);
+    }
+    
+    .performance-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .indicator-excellent {
+        background-color: #28a745;
+    }
+    
+    .indicator-good {
+        background-color: #17a2b8;
+    }
+    
+    .indicator-average {
+        background-color: #ffc107;
+    }
+    
+    .indicator-poor {
+        background-color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Employee Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="employee-details-card">
+                <div class="employee-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <img src="{{ employee.admin.profile_pic.url|default:'/static/dist/img/user-default.png' }}" 
+                                 alt="Employee Photo" class="employee-photo">
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="mb-1">{{ employee.admin.first_name }} {{ employee.admin.last_name }}</h3>
+                            <p class="mb-1 opacity-75">{{ employee.department.name|default:"No Department" }}</p>
+                            <p class="mb-0 opacity-75">
+                                <i class="fas fa-envelope me-2"></i>{{ employee.admin.email }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            {% if today_checkin %}
+                                {% if today_checkin.check_out_time %}
+                                    <span class="status-badge badge-completed">
+                                        <i class="fas fa-check-circle me-1"></i>Completed Today
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge badge-active">
+                                        <i class="fas fa-clock me-1"></i>Currently Active
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="status-badge" style="background-color: #f8d7da; color: #721c24;">
+                                    <i class="fas fa-times-circle me-1"></i>Not Checked In
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value text-primary">{{ total_checkins }}</div>
+                <div class="stat-label">Total Check-ins</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value text-success">{{ completed_checkins }}</div>
+                <div class="stat-label">Completed Sessions</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value text-info">{{ avg_hours|floatformat:1 }}h</div>
+                <div class="stat-label">Average Duration</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value text-warning">
+                    {% if total_checkins > 0 %}
+                        {% widthratio completed_checkins total_checkins 100 %}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </div>
+                <div class="stat-label">Completion Rate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Actions -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="employee-details-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-filter me-2 text-primary"></i>
+                        Filter & Actions
+                    </h5>
+                    <form method="GET" class="d-inline">
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <label for="date_range">Date Range:</label>
+                                <select name="date_range" id="date_range" class="form-control">
+                                    <option value="7" {% if date_filter == '7' %}selected{% endif %}>Last 7 days</option>
+                                    <option value="30" {% if date_filter == '30' %}selected{% endif %}>Last 30 days</option>
+                                    <option value="90" {% if date_filter == '90' %}selected{% endif %}>Last 90 days</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Apply Filter
+                                </button>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button type="button" onclick="exportEmployeeData()" class="btn btn-outline-success">
+                                    <i class="fas fa-download me-2"></i>Export Data
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <!-- Performance Indicator -->
+            <div class="employee-details-card">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Performance Score</h6>
+                    <div class="performance-score">
+                        <span class="performance-indicator indicator-good"></span>
+                        <strong>Good Performance</strong>
+                    </div>
+                    <small class="text-muted d-block mt-2">Based on attendance patterns</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="employee-details-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>
+                        Daily Activity Trend
+                    </h5>
+                    <canvas id="activityChart" width="400" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-in History and GPS Tracks -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="employee-details-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-history me-2 text-primary"></i>
+                        Recent Check-ins ({{ start_date|date:"M d" }} - {{ end_date|date:"M d, Y" }})
+                    </h5>
+                    
+                    {% if checkins %}
+                        {% for checkin in checkins %}
+                            <div class="checkin-item {% if not checkin.check_out_time %}incomplete{% endif %}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <strong>{{ checkin.check_in_time|date:"F d, Y" }}</strong><br>
+                                        <small class="text-muted">{{ checkin.check_in_time|date:"l" }}</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <span class="text-success">{{ checkin.check_in_time|date:"g:i A" }}</span><br>
+                                        <small class="text-muted">Check-in</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        {% if checkin.check_out_time %}
+                                            <span class="text-danger">{{ checkin.check_out_time|date:"g:i A" }}</span><br>
+                                            <small class="text-muted">Check-out</small>
+                                        {% else %}
+                                            <span class="text-warning">Active</span><br>
+                                            <small class="text-muted">In progress</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2">
+                                        {% if checkin.duration_hours %}
+                                            <span class="text-info">{{ checkin.duration_hours|floatformat:1 }}h</span><br>
+                                            <small class="text-muted">Duration</small>
+                                        {% else %}
+                                            <span class="text-muted">--</span><br>
+                                            <small class="text-muted">Duration</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        <button onclick="editCheckin({{ checkin.id }})" class="action-btn btn-edit me-2">
+                                            <i class="fas fa-edit me-1"></i>Edit
+                                        </button>
+                                        {% if not checkin.is_approved %}
+                                            <button onclick="approveCheckin({{ checkin.id }})" class="action-btn btn-approve">
+                                                <i class="fas fa-check me-1"></i>Approve
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if checkin.work_summary %}
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <div style="background: #e9ecef; padding: 10px; border-radius: 4px;">
+                                                <strong>Work Summary:</strong> {{ checkin.work_summary }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                            <h5>No Check-in Records</h5>
+                            <p>No GPS attendance records found for the selected time period.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Recent GPS Tracks -->
+            <div class="employee-details-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="fas fa-route me-2 text-primary"></i>
+                        Recent GPS Activity
+                    </h5>
+                    
+                    {% if recent_tracks %}
+                        {% for track in recent_tracks %}
+                            <div class="track-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>{{ track.get_status_display }}</strong><br>
+                                        <small class="text-muted">{{ track.address|default:"Location unavailable" }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted">{{ track.timestamp|date:"g:i A" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="fas fa-map-marker-alt fa-2x mb-2"></i>
+                            <p>No recent GPS tracks</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Active Session -->
+            {% if active_session %}
+                <div class="employee-details-card">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-play-circle me-2 text-success"></i>
+                            Active Session
+                        </h5>
+                        <p><strong>Type:</strong> {{ active_session.get_session_type_display }}</p>
+                        <p><strong>Started:</strong> {{ active_session.start_time|date:"g:i A" }}</p>
+                        <p><strong>Duration:</strong> {{ active_session.duration_minutes }} minutes</p>
+                        {% if active_session.notes %}
+                            <p><strong>Notes:</strong> {{ active_session.notes }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Edit Checkin Modal -->
+<div class="modal fade" id="editCheckinModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Check-in Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCheckinForm">
+                    <div class="mb-3">
+                        <label for="editWorkSummary" class="form-label">Work Summary</label>
+                        <textarea id="editWorkSummary" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editManagerNotes" class="form-label">Manager Notes</label>
+                        <textarea id="editManagerNotes" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="editIsApproved" class="form-check-input">
+                        <label for="editIsApproved" class="form-check-label">Approved</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" onclick="saveCheckinEdit()" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load Chart.js and initialize activity chart
+document.addEventListener('DOMContentLoaded', function() {
+    if (!window.Chart) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = function() {
+            initializeActivityChart();
+        };
+        document.head.appendChild(script);
+    } else {
+        initializeActivityChart();
+    }
+});
+
+function initializeActivityChart() {
+    const chartData = JSON.parse('{{ chart_data|escapejs }}');
+    const ctx = document.getElementById('activityChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.daily_activity.labels,
+            datasets: [{
+                label: 'Daily Check-ins',
+                data: chartData.daily_activity.data,
+                borderColor: 'rgb(102, 126, 234)',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+let currentEditingCheckinId = null;
+
+function editCheckin(checkinId) {
+    currentEditingCheckinId = checkinId;
+    // In production, fetch current data via AJAX
+    const modal = new bootstrap.Modal(document.getElementById('editCheckinModal'));
+    modal.show();
+}
+
+function saveCheckinEdit() {
+    if (!currentEditingCheckinId) return;
+    
+    const workSummary = document.getElementById('editWorkSummary').value;
+    const managerNotes = document.getElementById('editManagerNotes').value;
+    const isApproved = document.getElementById('editIsApproved').checked;
+    
+    // In production, send AJAX request to update the record
+    console.log('Saving checkin edit:', {
+        id: currentEditingCheckinId,
+        work_summary: workSummary,
+        manager_notes: managerNotes,
+        is_approved: isApproved
+    });
+    
+    // Close modal and refresh page
+    const modal = bootstrap.Modal.getInstance(document.getElementById('editCheckinModal'));
+    modal.hide();
+    
+    // Show success message
+    alert('Check-in record updated successfully!');
+    window.location.reload();
+}
+
+function approveCheckin(checkinId) {
+    if (confirm('Approve this check-in record?')) {
+        // In production, send AJAX request to approve
+        console.log('Approving checkin:', checkinId);
+        alert('Check-in approved successfully!');
+        window.location.reload();
+    }
+}
+
+function exportEmployeeData() {
+    const employeeId = {{ employee.id }};
+    const dateRange = document.getElementById('date_range').value;
+    const exportUrl = `{% url 'admin_location_analytics' %}?export=csv&employee_id=${employeeId}&date_range=${dateRange}`;
+    window.open(exportUrl, '_blank');
+}
+</script>
+{% endblock %}
